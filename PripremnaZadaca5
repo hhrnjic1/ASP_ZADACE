@@ -1,0 +1,28 @@
+#include <iostream>
+
+using namespace std;
+int fib2_0(int n, int pretprosli = 0, int prosli = 1, int first_n = 0,
+           int br = 0) {
+  if (br == 0) {
+    br = n - 1;
+    first_n = n;
+  }
+  if (n == 0 || n == 1)
+    return n;
+  n = prosli + pretprosli;
+  pretprosli = prosli;
+  prosli = n;
+  if (br == 1)
+    return n;
+  br--;
+  return fib2_0(n + first_n, pretprosli, prosli, first_n, br);
+}
+int nzd(int x, int y) {
+  if (y == 0)
+    return x;
+  return nzd(y, x % y);
+}
+int main() {
+  cout << fib2_0(10) << endl;
+  cout << nzd(6, 2);
+}
