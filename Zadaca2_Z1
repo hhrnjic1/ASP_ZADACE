@@ -1,0 +1,220 @@
+
+#include <iostream>
+using namespace std;
+template <typename tip> struct Cvor {
+  tip a;
+  Cvor *sljedeci;
+  Cvor *prethodni;
+};
+template <typename tip> class DvostraniRed {
+  mutable Cvor<tip> *pocetni = nullptr;
+  mutable Cvor<tip> *krajni = nullptr;
+  int brElemenata = 0;
+public:
+  
+  DvostraniRed() {}
+  ~DvostraniRed() {
+    brisi();
+  }
+  DvostraniRed(DvostraniRed<tip> &nova) { 
+    for(Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr; pomocni = pomocni->sljedeci) staviNaVrh(pomocni->a);
+    brElemenata = nova.brElemenata;
+  }
+  DvostraniRed<tip> &operator=(DvostraniRed<tip> &nova) {
+      if(this->pocetni != nova.pocetni){
+        this->brisi();
+        for(Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr; pomocni = pomocni->sljedeci) staviNaVrh(pomocni->a);
+        brElemenata = nova.brElemenata;
+      }
+   return *this;
+  }
+  int brojElemenata() const { return brElemenata; }
+ 
+  void brisi() {
+      if(brElemenata == 0) return;
+    Cvor<tip> *pom = pocetni->sljedeci;
+    while (brElemenata != 1) {
+      delete pocetni;
+      pocetni = pom;
+      pom = pocetni->sljedeci;
+      brElemenata--;
+    };
+    delete pocetni;
+    pocetni = nullptr;
+    krajni = nullptr;
+    brElemenata--;
+  }
+  tip celo() { 
+      if (brElemenata == 0) {
+          std::__throw_bad_alloc();
+      }
+      return pocetni->a; }
+  tip vrh(){
+      if (brElemenata == 0) {
+          std::__throw_bad_alloc();
+      }
+      return krajni->a;
+  }
+  void staviNaCelo(const tip &n){
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = n;
+      if(pocetni == nullptr){
+          pocetni = pomocni;
+          krajni = pocetni;
+      }else {
+          pomocni->sljedeci = pocetni;
+          pocetni->prethodni = pomocni;
+          pocetni = pomocni;
+          pocetni->prethodni = nullptr;
+      }
+      brElemenata++;
+  }
+  tip skiniSaCela(){
+      if(brElemenata == 0) throw ("Red je prazan!\n");
+      auto p = pocetni->sljedeci;
+      tip a = pocetni->a;
+      delete pocetni;
+      pocetni = p;
+      brElemenata--;
+      if(brElemenata == 0){
+          pocetni = nullptr;
+          krajni = nullptr;
+      }
+      return a;
+  }
+  void staviNaVrh(tip n){
+       Cvor<tip> *pomocni = new Cvor<tip>;
+       pomocni->a = n;
+       if(pocetni == nullptr){
+          pocetni = pomocni;
+          krajni = pocetni;
+      }else {
+          krajni->sljedeci = pomocni;
+          pomocni->prethodni = krajni;
+          krajni = pomocni;
+          krajni->sljedeci = nullptr;
+      }
+      brElemenata++;
+  }
+  tip skiniSaVrha(){
+    if(brElemenata == 0) throw ("Red je prazan!\n");
+      auto p = krajni->prethodni;
+      tip a = krajni->a;
+      delete krajni;
+      krajni = p;
+      brElemenata--;
+      if(brElemenata == 0){
+          pocetni = nullptr;
+          krajni = nullptr;
+      }
+      return a;
+  }
+};
+bool Konstruktor(){
+    try{
+        DvostraniRed<int> dred;
+        for(int i = 0; i<10; i++){
+            dred.staviNaCelo(i);
+            dred.staviNaVrh(i);
+        }
+    DvostraniRed<int> dred2(dred),dred3;
+    dred3 = dred2;
+    dred=dred;
+    if(dred.brojElemenata() != dred2.brojElemenata() ||
+       dred.brojElemenata() != dred3.brojElemenata())
+       return false;
+    dred.brisi();
+    if(dred.brojElemenata() == dred2.brojElemenata() ||
+       dred.brojElemenata() == dred3.brojElemenata())
+       return false;
+    return true;
+    }catch(...){
+        return false;
+    }
+    return true;
+}
+bool VrhICelo(){
+    DvostraniRed<int> dred;
+    for(int i = 0; i<10; i++){
+            dred.staviNaCelo(i);
+            dred.staviNaVrh(i);
+    }
+    if(dred.vrh() != 9) return false; 
+    if(dred.celo() != 9) return false;
+    return true;
+}
+bool staviNaCelo_staviNaVrh(){
+    DvostraniRed<int> dred;
+    for(int i = 0; i<10; i++){
+            dred.staviNaCelo(i);
+            if(dred.celo() != i) return false;
+            dred.staviNaVrh(i);
+            if(dred.vrh() != i) return false;
+    }
+    return true;
+}
+bool skiniSaCela_skiniSaVrha(){
+    DvostraniRed<int> dred;
+    for(int i = 0; i<10; i++){
+            dred.staviNaVrh(i);
+    }
+    int i = 9;
+    while(dred.brojElemenata()!=0){
+        if(dred.skiniSaVrha()!=i) return false;
+        i--;
+    }
+    
+    for(int i = 0; i<10; i++){
+            dred.staviNaCelo(i);
+    }
+    int j = 9;
+    while(dred.brojElemenata()!=0){
+        if(dred.skiniSaCela()!=j) return false;
+        j--;
+    }
+    return true;
+}
+bool Brisi(){
+    DvostraniRed<int> dred;
+    for(int i = 0; i<10; i++){
+            dred.staviNaVrh(i);
+    }
+    dred.brisi();
+    if(dred.brojElemenata() != 0) return false;
+    return true;
+}
+bool BrojElemenata(){
+    DvostraniRed<int> dred;
+    for(int i = 0; i<10; i++){
+            dred.staviNaVrh(i);
+    }
+    if(dred.brojElemenata() != 10) return false;
+    return true;
+}
+int main(){
+    if(Konstruktor()) std::cout<<"Konstruktor OK!\n";
+    else {
+    std::cout<<"Konstruktor NIJE OK!\n";
+    }
+    if(VrhICelo()) std::cout<<"Vrh i Celo su OK!\n";
+    else {
+    std::cout<<"Vrh i Celo  NISU OK!\n";
+    }
+    if(staviNaCelo_staviNaVrh()) std::cout<<"staviNaVrh i staviNaCelo su OK!\n";
+    else {
+    std::cout<<"staviNaVrh i staviNaCelo  NISU OK!\n";
+    }
+    if(skiniSaCela_skiniSaVrha()) std::cout<<"skiniSaVrha i skiniSaCela su OK!\n";
+    else {
+    std::cout<<"skiniSaVrha i skiniSaCela NISU OK!\n";
+    }
+    if(Brisi()) std::cout<<"brisi je OK!\n";
+    else {
+    std::cout<<"brisi NIJE OK!\n";
+    }
+    if(BrojElemenata()) std::cout<<"BrojElemenata je OK!\n";
+    else {
+    std::cout<<"BrojElemenata NIJE OK!\n";
+    }
+    return 0;
+}
