@@ -1,0 +1,270 @@
+#include <cmath>
+#include <exception>
+#include <iostream>
+#include <list>
+#include <stdexcept>
+
+using namespace std;
+template <typename tip> struct Cvor {
+public:
+  tip a;
+  Cvor *sljedeci = nullptr;
+};
+template <typename tip> class Red {
+  mutable Cvor<tip> *pocetni;
+  mutable Cvor<tip> *krajni;
+  mutable Cvor<tip> *t;
+  int brElemenata;
+
+  Cvor<tip> *MEGARibi() const {
+    if (pocetni == nullptr) {
+      return nullptr;
+    } else if (pocetni == t) {
+      return t;
+    }
+    Cvor<tip> *ribi;
+    for (ribi = pocetni; ribi->sljedeci != t; ribi = ribi->sljedeci) {
+    }
+    return ribi;
+  }
+  void dodajIspred(const tip &el) {
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (pocetni == t && t == krajni) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pomocni->sljedeci = pocetni;
+      pocetni = pomocni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    pomocni2->a = el;
+    pomocni2->sljedeci = pocetni;
+    pocetni = pomocni2;
+    brElemenata++;
+  }
+  void dodajIza(const tip &el) {
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (t == krajni) {
+      Cvor<tip> *p = new Cvor<tip>;
+      p->a = el;
+      krajni = p;
+      t->sljedeci = krajni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    pomocni2->a = el;
+    krajni->sljedeci = pomocni2;
+    krajni = pomocni2;
+    brElemenata++;
+  }
+  bool prethodni() const {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == pocetni) {
+      return false;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = MEGARibi();
+    t = pomocni;
+    return true;
+  }
+  bool sljedeci() const {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == krajni || t->sljedeci == nullptr) {
+      return false;
+    }
+    t = t->sljedeci;
+    return true;
+  }
+
+public:
+  
+  Red() {
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata = 0;
+  }
+  ~Red() {
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *p = nullptr;
+    while (pomocni != nullptr) {
+      p = pomocni->sljedeci;
+      delete pomocni;
+      pomocni = p;
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+  }
+  Red(Red<tip> &nova) {
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    brElemenata = nova.brElemenata;
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+  }
+  Red<tip> &operator=(Red<tip> &nova) {
+      if(this->pocetni == nova.pocetni){
+          return *this;
+      }
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *pomocni2 = krajni;
+    t = nullptr;
+    for (int i = 0; i < brElemenata; i++) {
+      pomocni2 = krajni;
+      for (pomocni = pocetni; pomocni->sljedeci != krajni;
+           pomocni = pomocni->sljedeci) {
+      }
+      krajni = pomocni;
+      delete pomocni2;
+    }
+    brElemenata = 0;
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+    return *this;
+  }
+  int brojElemenata() const { return brElemenata; }
+ 
+  void brisi() {
+    Cvor<tip> *pom = pocetni->sljedeci;
+    while (brElemenata != 1) {
+      delete pocetni;
+      pocetni = pom;
+      pom = pocetni->sljedeci;
+      brElemenata--;
+    };
+    delete pocetni;
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata--;
+  }
+  
+  void stavi(const tip &el){
+      dodajIza(el);
+  }
+  tip &celo() { 
+      if (pocetni == nullptr) {
+          std::__throw_bad_alloc();
+      }
+      return pocetni->a; }
+  tip skini() {
+    tip a;
+    try{
+    a = celo();
+    }catch(std::exception e){
+        throw e;
+    }
+    Cvor<tip> *pom = pocetni->sljedeci;
+    delete pocetni;
+    pocetni = pom;
+    brElemenata--;
+    return a;
+  }
+};
+template <typename Tip>
+void Ispis(Red<Tip> &red){
+    std::cout<<"Ispisan red :";
+    Red<Tip> pomocni = red;
+    int a = red.brojElemenata();
+    for (int i = 0; i<a; i++) {
+        std::cout<<red.skini()<<" ";
+    }
+    std::cout<<std::endl;
+    red = pomocni;
+}
+template <typename Tip>
+void napuniRed(Red<Tip> &red){
+    std::cout<<"Metoda stavi - ";
+    for (int i = 1; i<= 5; i++) {
+        red.stavi(i);     
+    }
+    Ispis(red);
+}
+template <typename Tip>
+void SkiniPaZamjeni(Red<Tip> &red){
+    std::cout<<"Metoda skini - ";
+    for (int i = 0; i<red.brojElemenata(); i++) {
+        red.skini();
+    }
+    for (int i = 6; i<= 10; i++) {
+        red.stavi(i);     
+    }
+    Ispis(red);
+}
+template <typename Tip>
+void ObrisiPaZamjeni(Red<Tip> &red){
+    std::cout<<"Metoda brisi - ";
+    red.brisi();
+    for (int i = 11; i<= 15; i++) {
+        red.stavi(i);     
+    }
+    Ispis(red);
+}
+template <typename Tip>
+void Prvi(Red<Tip> &red){
+    std::cout<<"Metoda celo - ";
+    std::cout<<red.celo()<<" ";
+    Ispis(red);
+}
+template <typename Tip>
+void Elementi(Red<Tip> &red){
+    std::cout<<"Metoda brElemenata - "<<red.brojElemenata()<<" ";
+    Ispis(red);
+}
+int main(){
+    Red<int> red1;
+    napuniRed(red1);
+    Red<int> red2(red1),red3;
+    red3 = red1;
+    SkiniPaZamjeni(red2);
+    ObrisiPaZamjeni(red3);
+    Prvi(red1);
+    Elementi(red2);
+    Ispis(red1);
+    Ispis(red2);
+    Ispis(red3);
+};
