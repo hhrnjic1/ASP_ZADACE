@@ -1,0 +1,221 @@
+#include <cstdio>
+#include <fstream>
+#include <iostream>
+#include <stdexcept>
+#include <vector>
+#include <chrono>
+
+using namespace std;
+using namespace std::chrono;
+template <typename Tip> void bubble_sort(Tip *niz, int vel) {
+  int i, j;
+  int br = 0;
+  for (int i = 0; i < vel; i++) {
+    for (int j = 0; j < vel - 1; j++) {
+      if (niz[j] > niz[j + 1]) {
+        Tip temp = niz[j];
+        niz[j] = niz[j + 1];
+        niz[j + 1] = temp;
+        br++;
+      }
+    }
+    if (br == 0) {
+      break;
+    }
+    br = 0;
+  }
+}
+template <typename Tip> void selection_sort(Tip *niz, int vel) {
+  for (int i = 0; i < vel; i++) {
+    int min = i;
+    for (int j = i + 1; j < vel; j++) {
+      if (niz[j] < niz[min]) {
+        min = j;
+      }
+    }
+    if (min != i) {
+      Tip temp = niz[i];
+      niz[i] = niz[min];
+      niz[min] = temp;
+    }
+  }
+}
+template <typename Tip> int particion(Tip *niz, int prvi, int zadnji) {
+  Tip pivot = niz[zadnji];
+  int i = prvi - 1;
+  for (int j = prvi; j < zadnji; j++) {
+    if (niz[j] < pivot) {
+      i++;
+      Tip temp = niz[i];
+      niz[i] = niz[j];
+      niz[j] = temp;
+    }
+  }
+  i++;
+  Tip temp = niz[i];
+  niz[i] = niz[zadnji];
+  niz[zadnji] = temp;
+  return i;
+}
+template <typename Tip> void quick_sort1(Tip *niz, int prvi, int zadnji) {
+  if (zadnji <= prvi)
+    return;
+  int pivot = particion(niz, prvi, zadnji);
+  quick_sort1(niz, prvi, pivot - 1);
+  quick_sort1(niz, pivot + 1, zadnji);
+}
+template <typename Tip> void quick_sort(Tip *niz, int vel){
+    quick_sort1(niz, 0, vel-1);
+}
+template <typename Tip> void merge(Tip *Lniz, Tip *Dniz, Tip *niz, int vel) {
+  int velL = vel / 2;
+  int velD = vel - velL;
+  int i = 0;
+  int l = 0;
+  int r = 0;
+  while (l < velL && r < velD) {
+    if (Lniz[l] < Dniz[r]) {
+      niz[i] = Lniz[l];
+      l++;
+      i++;
+    } else {
+      niz[i] = Dniz[r];
+      r++;
+      i++;
+    }
+  }
+  while (l < velL) {
+    niz[i] = Lniz[l];
+    l++;
+    i++;
+  }
+  while (r < velD) {
+    niz[i] = Dniz[r];
+    r++;
+    i++;
+  }
+}
+template <typename Tip> void merge_sort(Tip *niz, int vel) {
+  if (vel <= 1)
+    return;
+  int velL = vel / 2;
+  int velD = vel - velL;
+  Tip *lijeviniz = new Tip[velL];
+  Tip *desniniz = new Tip[velD];
+  int j = 0;
+  int i = 0;
+  for (; i < vel; i++) {
+    if (i < velL) {
+      lijeviniz[i] = niz[i];
+    } else {
+      desniniz[j] = niz[i];
+      j++;
+    }
+  }
+  merge_sort(lijeviniz, velL);
+  merge_sort(desniniz, velD);
+  merge(lijeviniz, desniniz, niz, vel);
+  delete [] lijeviniz;
+  delete [] desniniz;
+}
+void ucitaj(std::string filename, int*& niz, int &vel){
+    ifstream ulaz(filename);
+    if(!ulaz) throw std::logic_error("Datoteka ne postoji!!!");
+    std::vector<int> v;
+    while (!ulaz.eof()) {
+        string pom;
+        getline(ulaz,pom);
+        for(int i = 0; i<pom.size(); i++){
+            if(pom[i] != ' '){
+                v.push_back(int(pom[i]));
+                vel++;
+            }
+        }
+        if(ulaz.bad()){
+            break;
+        }
+    }
+    niz = new int[vel];
+    for(int i = 0; i<vel; i++){
+        niz[i] = v[i];
+    }
+}
+void generisi(std::string filename,int vel){
+    ofstream dat(filename);
+    srand(time(0));
+    for(int i = 0; i<vel; i++)
+    dat<<rand()%(1000)<<" ";
+}
+string funkcija(string ime){
+    int *niz;
+    int vel = 0;
+    ucitaj(ime,niz,vel);
+    cout<<"Unesite broj zeljenog algoritma za sortiranje:\n (1)Bubble sort\n";
+    cout<<"(2)Selection sort\n (3)Quick sort\n (4)Merge sort\n";
+    int unos = -1;
+    cin>>unos;
+    switch(unos){
+        case 1:{
+            auto start = high_resolution_clock::now();
+            bubble_sort(niz,vel);
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(stop - start);
+            cout<<"Vrijeme izvrsavanja (u milisekundama): "<<duration.count()<<endl; 
+            break;
+        }
+        case 2:{
+            auto start = high_resolution_clock::now();
+            selection_sort(niz,vel); 
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(stop - start);
+            cout<<"Vrijeme izvrsavanja (u milisekundama): "<<duration.count()<<endl;
+            break;
+            }
+        case 3:{ 
+            auto start = high_resolution_clock::now();
+            quick_sort(niz,vel);
+            auto stop = high_resolution_clock::now();
+            auto duration = duration_cast<milliseconds>(stop - start);
+            cout<<"Vrijeme izvrsavanja (u milisekundama): "<<duration.count()<<endl;
+            break;
+        }
+        case 4:{
+        auto start = high_resolution_clock::now();
+        merge_sort(niz,vel);
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(stop - start);
+        cout<<"Vrijeme izvrsavanja (u milisekundama): "<<duration.count()<<endl; 
+        break;
+        }
+        default: cout<<"Neispravan unos!!!";
+    }
+    for(int i = 0; i<vel-1; i++){
+        if(niz[i]>niz[i+1]){
+            std::cout <<"Niz nije sortiran"<< endl;
+            return "";
+        }
+    }
+    ofstream datoteka("izlazna.txt");
+    for(int i=0; i<vel; i++)
+    datoteka<<niz[i]<<" ";
+    return "izlazna.txt";
+}
+int main() {
+    auto start = high_resolution_clock::now();
+  int* niz;
+int vel = 0;
+generisi("autotest.txt", 3000000);
+ucitaj("autotest.txt", niz, vel);
+merge_sort(niz, vel);
+for(int i(0); i<vel-1; i++) 
+    if(niz[i] > niz[i+1]) {
+        cout << "NOT ";
+        break;
+    }
+cout << "OK";
+delete[] niz;
+auto stop = high_resolution_clock::now();
+ auto duration = duration_cast<milliseconds>(stop - start);
+        cout<<"Vrijeme izvrsavanja (u milisekundama): "<<duration.count()<<endl; 
+  return 0;
+}
