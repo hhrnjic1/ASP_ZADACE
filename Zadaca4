@@ -1,0 +1,777 @@
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <sys/time.h>
+#include <utility>
+
+using namespace std;
+using std::chrono::duration_cast;
+using std::chrono::milliseconds;
+using std::chrono::seconds;
+using std::chrono::system_clock;
+
+time_t pocetno_vrijeme1, krajnje_vrijeme1;
+
+template <typename Tip1, typename Tip2> class Mapa {
+public:
+  Mapa() {}
+  virtual ~Mapa() {}
+  virtual void obrisi(const Tip1 &kljuc) = 0;
+  virtual void obrisi() = 0;
+  virtual int brojElemenata() const = 0;
+  virtual Tip2 &operator[](const Tip1 &kljuc) = 0;
+  virtual Tip2 operator[](const Tip1 &kljuc) const = 0;
+};
+
+template <typename Tip1, typename Tip2>
+class AVLStabloMapa : public Mapa<Tip1, Tip2> {
+public:
+  struct Cvor {
+    int balans;
+    Cvor *roditelj;
+
+    std::pair<Tip1, Tip2> element;
+    Cvor *manji, *veci;
+  } * pocetak;
+  int broj_elemenata;
+  void ubaciCvor(Cvor *pok) {
+
+    if (pok == nullptr)
+      return;
+    if (pocetak == nullptr) {
+      pocetak = new Cvor({0,
+                          nullptr,
+                          {pok->element.first, pok->element.second},
+                          nullptr,
+                          nullptr});
+    } else {
+      Cvor *pr2 = pocetak, *prethodni = nullptr, *dodani;
+      while (pr2 != nullptr) {
+        prethodni = pr2;
+        if (pok->element.first < pr2->element.first)
+          pr2 = pr2->manji;
+        else
+          pr2 = pr2->veci;
+      }
+
+      pr2 = prethodni,
+      dodani = new Cvor({0, pr2, pok->element, nullptr, nullptr});
+      if (pok->element.first < pr2->element.first)
+        pr2->manji = dodani;
+      else
+        pr2->veci = dodani;
+      if ((pok->element.first < pr2->element.first && pr2->veci == nullptr) ||
+          (pok->element.first > pr2->element.first && pr2->manji == nullptr))
+        pr2->balans = 0;
+      else
+        updateBalans(dodani);
+    }
+    broj_elemenata++;
+    ubaciCvor(pok->manji);
+    ubaciCvor(pok->veci);
+  }
+
+  void ubaciCvorB(Cvor *pok, Tip1 kljuc) {
+
+    if (pok == nullptr)
+      return;
+    if (pok->element.first != kljuc) {
+      if (pocetak == nullptr) {
+        pocetak = new Cvor({0,
+                            nullptr,
+                            {pok->element.first, pok->element.second},
+                            nullptr,
+                            nullptr});
+      } else {
+        Cvor *pr2 = pocetak, *prethodni = nullptr, *dodani;
+        while (pr2 != nullptr) {
+          prethodni = pr2;
+          if (pok->element.first < pr2->element.first)
+            pr2 = pr2->manji;
+          else
+            pr2 = pr2->veci;
+        }
+
+        pr2 = prethodni,
+        dodani = new Cvor({0, pr2, pok->element, nullptr, nullptr});
+        if (pok->element.first < pr2->element.first)
+          pr2->manji = dodani;
+        else
+          pr2->veci = dodani;
+        if ((pok->element.first < pr2->element.first && pr2->veci == nullptr) ||
+            (pok->element.first > pr2->element.first && pr2->manji == nullptr))
+          pr2->balans = 0;
+        else
+          updateBalans(dodani);
+      }
+      broj_elemenata++;
+    }
+    ubaciCvorB(pok->manji, kljuc);
+    ubaciCvorB(pok->veci, kljuc);
+  }
+
+  void brisi(Cvor *pok) {
+    if (pok == nullptr)
+      return;
+    if (broj_elemenata == 1) {
+      delete pok;
+      broj_elemenata = 0;
+      return;
+    }
+    if (pok->manji == nullptr && pok->veci == nullptr) {
+      if (pok->roditelj->manji == pok)
+        pok->roditelj->manji = nullptr, pok->roditelj->balans--;
+
+      else
+        pok->roditelj->veci = nullptr, pok->roditelj->balans++;
+
+      delete pok;
+      broj_elemenata--;
+
+      return;
+    }
+    brisi(pok->manji);
+    brisi(pok->veci);
+    brisi(pok);
+  }
+
+  Tip2 pronadjiVrijednostCvora(Cvor *pok, Tip1 kljuc) const {
+    if (pok == nullptr)
+      return Tip2();
+    if (pok->element.first == kljuc)
+      return pok->element.second;
+    if (kljuc < pok->element.first)
+      return pronadjiVrijednostCvora(pok->manji, kljuc);
+    return pronadjiVrijednostCvora(pok->veci, kljuc);
+  }
+  Cvor *pronadjiCvor(Cvor *pok, const Tip1 &kljuc) {
+    if (broj_elemenata == 0) {
+      pocetak = new Cvor({0, nullptr, {kljuc, Tip2()}, nullptr, nullptr});
+      broj_elemenata++;
+      return pocetak;
+    } else if (pok->element.first == kljuc)
+      return pok;
+    else if (kljuc < pok->element.first && pok->manji == nullptr) {
+      pok->manji = new Cvor({0, pok, {kljuc, Tip2()}, nullptr, nullptr});
+      if (pok->veci != nullptr)
+        pok->balans = 0;
+      else
+        updateBalans(pok->manji);
+      broj_elemenata++;
+      return pronadjiCvor(pocetak, kljuc);
+    } else if (kljuc > pok->element.first && pok->veci == nullptr) {
+      pok->veci = new Cvor({0, pok, {kljuc, Tip2()}, nullptr, nullptr});
+      if (pok->manji != nullptr)
+        pok->balans = 0;
+      else
+        updateBalans(pok->veci);
+      broj_elemenata++;
+      return pronadjiCvor(pocetak, kljuc);
+    } else if (kljuc > pok->element.first)
+      return pronadjiCvor(pok->veci, kljuc);
+  
+    else if (kljuc < pok->element.first)
+      return pronadjiCvor(pok->manji, kljuc);
+    return pronadjiCvor(pocetak, kljuc);
+  }
+  void brisi(Cvor *pok, const Tip1 &kljuc) {
+    if (pok == nullptr)
+      return;
+    if (pok->element.first == kljuc) {
+      if (pok->manji == nullptr && pok->veci == nullptr) {
+        if (pok->roditelj != nullptr && pok->roditelj->manji == pok)
+          pok->roditelj->manji = nullptr, pok->roditelj->balans--;
+        else if (pok->roditelj != nullptr)
+          pok->roditelj->veci = nullptr, pok->roditelj->balans++;
+        updateBalans(pok->roditelj);
+      } else if (pok == pocetak) {
+        if (pok->manji == nullptr)
+          pok->veci->balans = pocetak->balans - 1, pocetak = pok->veci,
+          pok->veci->roditelj = nullptr;
+        else if (pok->veci == nullptr)
+          pocetak = pok->manji, pok->manji->roditelj = nullptr;
+        else {
+          Cvor *pok2 = pok->manji;
+          while (pok2->veci != nullptr)
+            pok2 = pok2->veci;
+
+          pocetak = pok2;
+          if (pok2->roditelj == pok) {
+            pok2->veci = pok->veci;
+            pok->veci->roditelj = pok2;
+            pok2->roditelj = nullptr;
+          } else {
+            pok2->roditelj->veci = pok2->manji, pok2->manji = pok->manji,
+            pok2->veci = pok->veci;
+            if (pok2->manji != nullptr)
+              pok2->manji->roditelj = pok2->roditelj;
+            pok2->roditelj = nullptr;
+          }
+        }
+      } else if (pok->manji == nullptr || pok->veci == nullptr) {
+        if (pok->manji == nullptr && pok->roditelj->manji == pok) {
+          pok->roditelj->manji == pok->veci;
+          pok->veci->roditelj = pok->roditelj;
+        } else if (pok->manji == nullptr && pok->roditelj->veci == pok) {
+          pok->roditelj->veci == pok->veci;
+          pok->veci->roditelj = pok->roditelj;
+        }
+        if (pok->veci == nullptr && pok->roditelj->veci == pok) {
+          pok->roditelj->veci == pok->manji;
+          pok->manji->roditelj = pok->roditelj;
+        } else if (pok->veci == nullptr && pok->roditelj->manji == pok) {
+          pok->roditelj->manji == pok->manji;
+          pok->manji->roditelj = pok->roditelj;
+        }
+      }
+    }
+    if (pok->element.first > kljuc)
+      brisi(pok->veci, kljuc);
+    else
+      brisi(pok->manji, kljuc);
+  }
+
+  void updateBalans(Cvor *p) {
+    if (p->roditelj == nullptr)
+      return;
+
+    if (p == p->roditelj->manji)
+      p->roditelj->balans++;
+    else
+      p->roditelj->balans--;
+      if(p->roditelj->balans == 0)
+      return;
+    if (p->roditelj->balans < -1 || p->roditelj->balans > 1) {
+      popraviBalans(p->roditelj);
+      return;
+    } else
+      updateBalans(p->roditelj);
+  }
+
+  Cvor *popraviBalans(Cvor *p) {
+    Cvor *premjestiti, *pr = p;
+    std::pair<Tip1, Tip2> mapa = p->element;
+    if (p->balans < -1) {
+      p = p->veci;
+      if (p->balans > 0) {
+        p->roditelj->veci = p->manji;
+        p->manji->roditelj = p->roditelj;
+        Cvor *pr2 = p->manji;
+        premjestiti = p;
+        p = p->manji;
+        if(p->veci != nullptr)
+        p->veci->roditelj = premjestiti;
+        premjestiti->manji = pr2->veci;
+        premjestiti->roditelj = pr2;
+        pr2->veci = premjestiti;
+        premjestiti->balans = 0;
+      }
+      if (p->roditelj->roditelj != nullptr) {
+        if (p->roditelj->roditelj->manji == p->roditelj)
+          p->roditelj->roditelj->manji = p;
+        else
+          p->roditelj->roditelj->veci = p;
+      } else
+        pocetak = p;
+      pr = p, premjestiti = pr->roditelj;
+
+      p->roditelj = p->roditelj->roditelj;
+      
+      pr = p;
+      premjestiti->veci = pr->manji;
+      if(pr->manji != nullptr)
+      pr->manji->roditelj = premjestiti;
+      pr->manji = premjestiti;
+      premjestiti->roditelj = pr;
+    } else {
+      p = p->manji;
+
+      if (p->balans < 0) {
+        p->roditelj->manji = p->veci;
+        p->veci->roditelj = p->roditelj;
+        Cvor *pr2 = p->veci;
+        premjestiti = p;
+        p = pr2;
+       
+        if(p->manji != nullptr)
+        p->manji->roditelj = premjestiti;
+        premjestiti->veci = pr2->manji;
+        premjestiti->roditelj = pr2;
+        pr2->manji = premjestiti;
+        premjestiti->balans = 0;
+      }
+      if (p->roditelj->roditelj != nullptr) {
+        if (p->roditelj->roditelj->manji == p->roditelj)
+          p->roditelj->roditelj->manji = p;
+        else
+          p->roditelj->roditelj->veci = p;
+      } else
+        pocetak = p;
+      pr = p, premjestiti = pr->roditelj;
+      p->roditelj = p->roditelj->roditelj;
+
+      pr = p;
+      
+       premjestiti->manji = pr->veci;
+      if(pr->veci != nullptr)
+      pr->veci->roditelj = premjestiti;
+      pr->veci = premjestiti;
+      premjestiti->roditelj = pr;
+    }
+    pr->balans = 0, premjestiti->balans = 0;
+    return p;
+  }
+
+public:
+  AVLStabloMapa() : pocetak(nullptr), broj_elemenata(0) {}
+  ~AVLStabloMapa() { obrisi(); }
+  void obrisi() override {
+    brisi(pocetak);
+    pocetak = nullptr;
+  }
+  void obrisi(const Tip1 &kljuc) override {
+    AVLStabloMapa<Tip1, Tip2> pr = *this;
+    obrisi();
+    ubaciCvorB(pr.pocetak, kljuc);
+  }
+
+  int brojElemenata() const override { return broj_elemenata; }
+
+  Tip2 operator[](const Tip1 &kljuc) const override {
+    return pronadjiVrijednostCvora(pocetak, kljuc);
+  }
+
+  AVLStabloMapa(const AVLStabloMapa &stablo) {
+    pocetak = nullptr, broj_elemenata = 0;
+    Cvor *pr = stablo.pocetak, *roditelj = nullptr;
+    ubaciCvor(pr);
+  }
+
+  AVLStabloMapa &operator=(const AVLStabloMapa &stablo) {
+    if (this == &stablo)
+      return *this;
+    this->obrisi();
+    ubaciCvor(stablo.pocetak);
+    return *this;
+  }
+  Tip2 &operator[](const Tip1 &kljuc) override {
+    return pronadjiCvor(pocetak, kljuc)->element.second;
+  }
+};
+
+template <typename Tip1, typename Tip2>
+class BinStabloMapa : public Mapa<Tip1, Tip2> {
+  struct Cvor {
+    Cvor *roditelj;
+    std::pair<Tip1, Tip2> element;
+    Cvor *manji, *veci;
+  } * pocetak;
+  int broj_elemenata;
+  void ubaciCvor(Cvor *pok) {
+    if (pok == nullptr)
+      return;
+    if (pocetak == nullptr) {
+      pocetak = new Cvor({nullptr,
+                          {pok->element.first, pok->element.second},
+                          nullptr,
+                          nullptr});
+    } else {
+      Cvor *pr2 = pocetak, *prethodni = nullptr;
+      while (pr2 != nullptr) {
+        prethodni = pr2;
+        if (pok->element.first < pr2->element.first)
+          pr2 = pr2->manji;
+        else
+          pr2 = pr2->veci;
+      }
+
+      pr2 = prethodni;
+      if (pok->element.first < pr2->element.first)
+        pr2->manji = new Cvor({pr2, pok->element, nullptr, nullptr}),
+        pr2 = pr2->manji;
+      else
+        pr2->veci = new Cvor({pr2, pok->element, nullptr, nullptr}),
+        pr2 = pr2->veci;
+
+      pr2->roditelj = prethodni;
+    }
+    broj_elemenata++;
+    ubaciCvor(pok->manji);
+    ubaciCvor(pok->veci);
+  }
+  void brisi(Cvor *pok) {
+    if (pok == nullptr)
+      return;
+    if (broj_elemenata == 1) {
+      delete pok;
+      broj_elemenata = 0;
+      return;
+    }
+    if (pok->manji == nullptr && pok->veci == nullptr) {
+      if (pok->roditelj->manji == pok)
+        pok->roditelj->manji = nullptr;
+      else
+        pok->roditelj->veci = nullptr;
+      delete pok;
+      broj_elemenata--;
+      return;
+    }
+    brisi(pok->manji);
+    brisi(pok->veci);
+    brisi(pok);
+  }
+
+  Tip2 nadji(Cvor *pok, Tip1 kljuc) const {
+    if (pok == nullptr)
+      return Tip2();
+    if (pok->element.first == kljuc)
+      return pok->element.second;
+    if (kljuc < pok->element.first)
+      return nadji(pok->manji, kljuc);
+    return nadji(pok->veci, kljuc);
+  }
+  Tip2 &nadji(Cvor *pok, const Tip1 &kljuc) {
+    if (broj_elemenata == 0) {
+      pocetak = new Cvor({nullptr, {kljuc, Tip2()}, nullptr, nullptr});
+      broj_elemenata++;
+      return pocetak->element.second;
+    }
+    if (pok->element.first == kljuc)
+      return pok->element.second;
+    if (kljuc < pok->element.first && pok->manji == nullptr) {
+      pok->manji = new Cvor({pok, {kljuc, Tip2()}, nullptr, nullptr});
+      broj_elemenata++;
+      return pok->manji->element.second;
+    }
+    if (kljuc > pok->element.first && pok->veci == nullptr) {
+      pok->veci = new Cvor({pok, {kljuc, Tip2()}, nullptr, nullptr});
+      broj_elemenata++;
+      return pok->veci->element.second;
+    }
+    if (kljuc < pok->element.first)
+      return nadji(pok->manji, kljuc);
+    return nadji(pok->veci, kljuc);
+  }
+  void brisi(Cvor *pok, const Tip1 &kljuc) {
+    if (pok == nullptr)
+      return;
+    if (pok->element.first == kljuc) {
+      if (pok->manji == nullptr && pok->veci == nullptr) {
+        if (pok->roditelj != nullptr && pok->roditelj->manji == pok)
+          pok->roditelj->manji = nullptr;
+        else if (pok->roditelj != nullptr)
+          pok->roditelj->veci = nullptr;
+      } else if (pok == pocetak) {
+        if (pok->manji == nullptr)
+          pocetak = pok->veci, pok->veci->roditelj = nullptr;
+        else if (pok->veci == nullptr)
+          pocetak = pok->manji, pok->manji->roditelj = nullptr;
+        else {
+          Cvor *pok2 = pok->manji;
+          while (pok2->veci != nullptr)
+            pok2 = pok2->veci;
+
+          pocetak = pok2;
+          if (pok2->roditelj == pok) {
+            pok2->veci = pok->veci;
+            pok->veci->roditelj = pok2;
+            pok2->roditelj = nullptr;
+          } else {
+            pok2->roditelj->veci = pok2->manji, pok2->manji = pok->manji,
+            pok2->veci = pok->veci;
+            if (pok2->manji != nullptr)
+              pok2->manji->roditelj = pok2->roditelj;
+            pok2->roditelj = nullptr;
+          }
+        }
+      } else if (pok->manji == nullptr || pok->veci == nullptr) {
+        if (pok->manji == nullptr && pok->roditelj->manji == pok) {
+          pok->roditelj->manji == pok->veci;
+          pok->veci->roditelj = pok->roditelj;
+        } else if (pok->manji == nullptr && pok->roditelj->veci == pok) {
+          pok->roditelj->veci == pok->veci;
+          pok->veci->roditelj = pok->roditelj;
+        }
+        if (pok->veci == nullptr && pok->roditelj->veci == pok) {
+          pok->roditelj->veci == pok->manji;
+          pok->manji->roditelj = pok->roditelj;
+        } else if (pok->veci == nullptr && pok->roditelj->manji == pok) {
+          pok->roditelj->manji == pok->manji;
+          pok->manji->roditelj = pok->roditelj;
+        }
+      }
+    }
+    if (pok->element.first > kljuc)
+      brisi(pok->veci, kljuc);
+    else
+      brisi(pok->manji, kljuc);
+  }
+
+public:
+  BinStabloMapa() : pocetak(nullptr), broj_elemenata(0) {}
+  ~BinStabloMapa() { obrisi(); }
+  void obrisi() override {
+    brisi(pocetak);
+    pocetak = nullptr;
+  }
+  void obrisi(const Tip1 &kljuc) override {
+    Cvor *pr = pocetak, *temp;
+    bool lijevi = false;
+    while (pr != nullptr && pr->element.first != kljuc) {
+      if (pr->element.first < kljuc)
+        pr = pr->veci, lijevi = false;
+      else
+        pr = pr->manji, lijevi = true;
+    }
+    if (pr == nullptr)
+      return;
+    if (broj_elemenata == 1) {
+      delete pocetak;
+      broj_elemenata = 0;
+      pocetak = nullptr;
+      return;
+    } else if (pr == pocetak) {
+      if (pr->manji == nullptr)
+        pocetak = pr->veci, pr->veci->roditelj = nullptr;
+      else if (pr->veci == nullptr)
+        pocetak = pr->manji, pr->manji->roditelj = nullptr;
+      else {
+        Cvor *pr2 = pr->manji;
+        while (pr2->veci != nullptr)
+          pr2 = pr2->veci;
+
+        pocetak = pr2;
+        if (pr2->roditelj == pr) {
+          pr2->veci = pr->veci;
+          if (pr->veci != nullptr)
+            pr->veci->roditelj = pr2;
+          pr2->roditelj = nullptr;
+        } else {
+          pr2->roditelj->veci = pr2->manji;
+          if (pr2->manji != nullptr)
+            pr2->manji->roditelj = pr2->roditelj;
+
+          pr2->manji = pr->manji, pr2->veci = pr->veci;
+          pr->manji->roditelj = pr2;
+          if (pr->veci != nullptr)
+            pr->veci->roditelj = pr2;
+          pr2->roditelj = nullptr;
+        }
+      }
+    } else if (pr->manji == nullptr && pr->veci == nullptr) {
+      if (pr->roditelj->manji == pr)
+        pr->roditelj->manji = nullptr;
+      else
+        pr->roditelj->veci = nullptr;
+    } else if (pr->manji == nullptr) {
+      temp = pr;
+      pr = pr->roditelj;
+      if (temp == pr->manji)
+        pr->manji = temp->veci;
+      else
+        pr->veci = temp->veci;
+      temp->veci->roditelj = pr;
+      pr = temp;
+    } else if (pr->veci == nullptr) {
+      temp = pr;
+      pr = pr->roditelj;
+      if (temp == pr->manji)
+        pr->manji = temp->manji;
+      else
+        pr->veci = temp->manji;
+      temp->manji->roditelj = pr;
+      pr = temp;
+    } else {
+      Cvor *pr2 = pr->manji;
+      while (pr2->veci != nullptr)
+        pr2 = pr2->veci;
+      pr->manji->roditelj = pr2;
+      pr->veci->roditelj = pr2;
+      pr2->roditelj->veci = pr2->manji;
+      pr2->manji->roditelj = pr2->roditelj;
+      if (pr->roditelj->manji == pr)
+        pr->roditelj->manji = pr2;
+      else if (pr->roditelj->veci == pr)
+        pr->roditelj->veci = pr2;
+      pr2->roditelj = pr->roditelj;
+      pr2->manji = pr->manji;
+      pr2->veci = pr->veci;
+    }
+    delete pr;
+    broj_elemenata--;
+  }
+
+  int brojElemenata() const override { return broj_elemenata; }
+
+  Tip2 operator[](const Tip1 &kljuc) const override {
+    return nadji(pocetak, kljuc);
+  }
+
+  BinStabloMapa(const BinStabloMapa &stablo) {
+    pocetak = nullptr, broj_elemenata = 0;
+    Cvor *pr = stablo.pocetak, *roditelj = nullptr;
+    ubaciCvor(pr);
+  }
+
+  BinStabloMapa &operator=(const BinStabloMapa &stablo) {
+    if (this == &stablo)
+      return *this;
+    this->obrisi();
+    ubaciCvor(stablo.pocetak);
+    return *this;
+  }
+  Tip2 &operator[](const Tip1 &kljuc) override { return nadji(pocetak, kljuc); }
+};
+
+template <typename Tip1, typename Tip2>
+class NizMapa : public Mapa<Tip1, Tip2> {
+  struct Cvor {
+    std::pair<Tip1, Tip2> element;
+    Cvor *sljedeci;
+  } * pocetak, *kraj;
+  int broj_elemenata;
+
+public:
+  NizMapa() : pocetak(nullptr), kraj(nullptr), broj_elemenata(0){};
+  ~NizMapa() { obrisi(); }
+  NizMapa(const NizMapa &mapa) {
+    broj_elemenata = 0;
+    Cvor *trenutni = mapa.pocetak;
+    for (int i = 0; i < mapa.broj_elemenata; i++) {
+      if (i == 0)
+        pocetak = new Cvor({std::pair<Tip1, Tip2>(trenutni->element.first,
+                                                  trenutni->element.second),
+                            nullptr}),
+        kraj = pocetak;
+      else {
+        kraj->sljedeci =
+            new Cvor({std::pair<Tip1, Tip2>(trenutni->element.first,
+                                            trenutni->element.second),
+                      nullptr}),
+        kraj = kraj->sljedeci;
+      }
+      broj_elemenata++;
+    }
+  }
+  void obrisi(const Tip1 &kljuc) {
+    Cvor *trenutni = pocetak, *prethodni = nullptr;
+    for (int i = 0; i < broj_elemenata; i++) {
+      if (trenutni->element.first == kljuc) {
+        Cvor *privremeni = trenutni;
+        trenutni = trenutni->sljedeci;
+        delete privremeni;
+
+        if (i == 0)
+          pocetak = trenutni;
+        else
+          prethodni->sljedeci = trenutni;
+
+        broj_elemenata--;
+        break;
+      }
+      if (i == 0)
+        prethodni = trenutni;
+      else
+        prethodni = prethodni->sljedeci;
+      trenutni = trenutni->sljedeci;
+    }
+  }
+  void obrisi() {
+    Cvor *trenutni = pocetak;
+    while (broj_elemenata != 0) {
+      pocetak = pocetak->sljedeci;
+      delete trenutni;
+      trenutni = pocetak;
+      broj_elemenata--;
+    }
+    pocetak = nullptr, kraj = nullptr;
+  }
+  int brojElemenata() const { return broj_elemenata; }
+  Tip2 &operator[](const Tip1 &kljuc) {
+    Cvor *trenutni = pocetak;
+    int i;
+    for (i = 0; i < broj_elemenata; i++) {
+      if (trenutni->element.first == kljuc)
+        return trenutni->element.second;
+      trenutni = trenutni->sljedeci;
+    }
+
+    if (broj_elemenata == 0) {
+      pocetak = new Cvor({std::pair<Tip1, Tip2>(kljuc, Tip2()), nullptr});
+      kraj = pocetak;
+    } else {
+      kraj->sljedeci =
+          new Cvor({std::pair<Tip1, Tip2>(kljuc, Tip2()), nullptr});
+      kraj = kraj->sljedeci;
+    }
+    broj_elemenata++;
+    return kraj->element.second;
+  }
+  Tip2 operator[](const Tip1 &kljuc) const {
+    Cvor *trenutni = pocetak;
+    int i;
+    for (i = 0; i < broj_elemenata; i++) {
+      if (trenutni->element.first == kljuc)
+        return trenutni->element.second;
+      trenutni = trenutni->sljedeci;
+    }
+    return Tip2();
+  }
+  NizMapa operator=(const NizMapa &mapa) {
+    if (&mapa == this)
+      return *this;
+
+    obrisi();
+    Cvor *trenutni = mapa.pocetak;
+    for (int i = 0; i < mapa.broj_elemenata; i++) {
+      if (i == 0)
+        pocetak = new Cvor({std::pair<Tip1, Tip2>(trenutni->element.first,
+                                                  trenutni->element.second),
+                            nullptr}),
+        kraj = pocetak;
+      else {
+        kraj->sljedeci =
+            new Cvor({std::pair<Tip1, Tip2>(trenutni->element.first,
+                                            trenutni->element.second),
+                      nullptr}),
+        kraj = kraj->sljedeci;
+      }
+      broj_elemenata++;
+    }
+    return *this;
+  }
+};
+
+int main() {
+      time_t pocetno_vrijeme1, krajnje_vrijeme1, pocetno_vrijeme2, krajnje_vrijeme2;
+  BinStabloMapa<int, int> stablo;
+  AVLStabloMapa<int, int> mapa;
+  int vel(100000);
+  pocetno_vrijeme1 =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+  for (int i = 0; i < vel; i++) 
+    stablo[rand() % 100] = i;
+  
+  krajnje_vrijeme1 =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+
+  pocetno_vrijeme2 =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+  for (int i = 0; i < vel; i++)
+    mapa[rand() % 100] = i;
+  krajnje_vrijeme2 =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+
+  std::cout << "Za unos " << vel << " elemenata preko binarnog stabla je potrebno "
+            << krajnje_vrijeme1 - pocetno_vrijeme1 << ", a preko AVL stabla "
+            << krajnje_vrijeme2 - pocetno_vrijeme2 << " milisekundi.\n";
+  pocetno_vrijeme1 =
+      duration_cast<milliseconds>(system_clock::now().time_since_epoch())
+          .count();
+  return 0;
+}
