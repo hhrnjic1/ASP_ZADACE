@@ -1,0 +1,278 @@
+#include <iostream>
+#include <stdexcept>
+#include <vector>
+#include <string>
+
+using namespace std;
+
+template <typename TipOznake>
+class GranaIterator;
+template<typename TipOznake>
+class Cvor;
+template<typename TipOznake>
+class Grana;
+template<typename TipOznake>
+class UsmjereniGraf{
+    public:
+     UsmjereniGraf(){};
+    virtual ~UsmjereniGraf(){}
+    virtual int dajBrojCvorova()=0;
+    virtual void postaviBrojCvorova(int br)=0;
+    virtual void dodajGranu(int pocetni, int destinacijski, float tezina=0)=0;
+    virtual void obrisiGranu(int pocetni, int destinacijski)=0;
+    virtual void postaviTezinuGrane(int pocetni, int destinacijski, float tezina=0)=0;
+    virtual float dajTezinuGrane(int pocetni, int destinacijski)=0;
+    virtual bool postojiGrana(int pocetni, int destinacijski)=0;
+    virtual void postaviOznakuCvora(int index, TipOznake oznaka)=0;
+    virtual TipOznake dajOznakuCvora(int index)=0;
+    virtual void postaviOznakuGrane(int pocetni, int destinacijski, TipOznake oznaka)=0;
+    virtual TipOznake dajOznakuGrane(int pocetni, int destinacijski)=0;
+    virtual void postaviOznakuGraneB(int pocetni, int destinacijski)=0;
+    virtual bool dajOznakuGraneB(int pocetni, int destinacijski)=0;
+    virtual Cvor<TipOznake> dajCvor(int broj)=0;
+    virtual Grana<TipOznake> dajGranu(int pocetni, int destinacijski)=0;
+    virtual Grana<TipOznake> *dajGranui(int pocetni, int destinacijski)=0;
+    virtual GranaIterator<TipOznake> dajGranePocetak()=0;
+    virtual GranaIterator<TipOznake> dajGraneKraj()=0;
+};
+
+template<typename TipOznake>
+class Grana{
+    float tezina;
+    TipOznake oznaka = TipOznake();
+    Cvor<TipOznake> *polazni;
+    Cvor<TipOznake> *destinacijski;
+    UsmjereniGraf<TipOznake> *pok;
+    bool posjecen = false;
+
+    public:
+    Grana(Cvor<TipOznake> *pol , Cvor<TipOznake> *dest, float tez, UsmjereniGraf<TipOznake> *p){
+        polazni = pol;
+        destinacijski = dest;
+        pok = p;
+        tezina = tez;
+    }
+    float dajTezinu(){return tezina;}
+    void postaviTezinu(float vrijednost){tezina = vrijednost;}
+    TipOznake dajOznaku(){return oznaka;}
+    void postaviOznaku(TipOznake vrijednost, int ok = 0){
+        if(!ok)
+        pok->postaviOznakuGrane(polazni->dajRedniBroj(),destinacijski->dajRedniBroj(),vrijednost);
+        oznaka = vrijednost;}
+    Cvor<TipOznake> dajPolazniCvor(){return *polazni;}
+    Cvor<TipOznake> dajDolazniCvor(){return *destinacijski;}
+    bool dajposjecen(){return posjecen;}
+    void postaviOznakuB(int vrijednost, int ok = 0){
+        if(!ok)
+        pok->postaviOznakuGraneB(polazni->dajRedniBroj(), destinacijski->dajRedniBroj());
+        this->posjecen = vrijednost;
+    }
+
+};
+
+template <typename TipOznake>
+class Cvor{
+    int RedniBroj;
+    TipOznake oznaka; 
+    UsmjereniGraf<TipOznake> *pok;
+    bool posjecen = false;
+
+    public:
+    Cvor(){}
+    Cvor(UsmjereniGraf<TipOznake> *p, int broj){
+        RedniBroj = broj;
+        pok = p;
+    }
+    TipOznake dajOznaku(){return oznaka;}
+    void postaviOznaku(TipOznake vrijednost, int ok = 0){
+        if(!ok)
+        pok->postaviOznakuCvora(RedniBroj,vrijednost);
+        oznaka = vrijednost;
+    }
+    int dajRedniBroj(){return RedniBroj;}
+    bool dajposjecen(){return posjecen;}
+    void postaviOznakuB(int vrijednost){posjecen = vrijednost;}
+};
+
+template <typename TipOznake>
+class GranaIterator{
+    UsmjereniGraf<TipOznake> *pok;
+    int pol, dest;
+
+    public:
+    GranaIterator(UsmjereniGraf<TipOznake> *p, int pol, int dest){
+        pok = p;
+        this->pol = pol;
+        this->dest = dest;
+    }
+    Grana<TipOznake> operator*(){return pok->dajGranu(pol,dest);}
+    bool operator==(const GranaIterator &it)const{
+        if(pol == it.pol && dest == it.dest && pok == it.pok)
+        return 1;
+        return 0;
+    }
+    bool operator!=(const GranaIterator &it)const{
+        if(pol != it.pol || dest != it.dest || pok != it.pok) return true;
+        return false;
+    }
+    GranaIterator& operator++(){
+        if(pol == pok->dajBrojCvorova())
+            throw std::domain_error("Nema vise grana!");
+
+        for(int i = 0; i<pok->dajBrojCvorova(); i++)
+            for(int j = 0; j<pok->dajBrojCvorova(); j++){
+                if(pok->postojiGrana(i,j)){
+                    if(pok->dajGranu(i,j).dajposjecen() != 1){
+                        pok->dajGranu(i,j).postaviOznakuB(1);
+                        pol = i;
+                        dest = j;
+                        return *this;
+                    }
+                }
+            }
+        pol = pok->dajBrojCvorova()-1;
+        dest = pol;
+        return *this;
+    }
+    GranaIterator& operator++(int){
+        if(pol + 1 == pok->dajBrojCvorova())
+            throw std::domain_error("Nema vise grana!");
+
+        for(int i = 0; i<pok->dajBrojCvorova(); i++)
+            for(int j = 0; j<pok->dajBrojCvorova(); j++){
+                if(i == 0 && j == 0) continue;
+                if(pok->postojiGrana(i,j)){
+                    if(pok->dajGranu(i,j).dajposjecen() != 1){
+                        pok->dajGranu(i,j).postaviOznakuB(1);
+                        pol = i;
+                        dest = j;
+                        return *this;
+                    }
+                }
+            }
+        return *this;
+    }
+};
+template<typename TipOznake>
+class MatricaGraf: public UsmjereniGraf<TipOznake>{
+    std::vector<std::vector<Grana<TipOznake>*>> matrica;
+    std::vector<Cvor<TipOznake>*> cvorovi;
+    int brojCvorova = 0;
+    int prviRed = 0;
+    int prvaKolona = 0;
+    GranaIterator<TipOznake> *grana1 = nullptr;
+    GranaIterator<TipOznake> *grana2 = nullptr;
+
+    public:
+    MatricaGraf(int broj){
+        brojCvorova = broj;
+        matrica.resize(broj);
+        for (int i = 0; i<broj; i++) {
+            cvorovi.push_back(new Cvor<TipOznake>(this,i));
+            for(int j = 0; j<broj; j++){
+                matrica[i].push_back(nullptr);
+            }
+        }
+    }
+    ~MatricaGraf(){
+        for(int i = 0; i<brojCvorova; i++){
+            delete cvorovi[i];
+            for (int j = 0; j<brojCvorova; j++) {
+                delete matrica[i][j];
+            }
+        }
+        brojCvorova = 0;
+        delete grana1;
+        delete grana2;
+    }
+    int dajBrojCvorova()override{return brojCvorova;}
+    void postaviBrojCvorova(int broj)override{
+        if(broj < brojCvorova)
+            throw std::domain_error("Ne moze se smanjiti matrica!!!");
+        brojCvorova = broj;
+        matrica.resize(broj);
+        for (int i = 0; i<broj; i++) {
+            cvorovi.push_back(new Cvor<TipOznake>(this,i));
+            for(int j = 0; j<broj; j++){
+                matrica[i].push_back(nullptr);
+            }
+        }
+    }
+    void dodajGranu(int p, int d, float tezina = 0)override{
+        matrica[p][d]=new Grana<TipOznake>(cvorovi[p],cvorovi[d], tezina, this);
+        if((prviRed == p && prvaKolona>d) || prviRed > p){
+            prviRed = p;
+            prvaKolona = d;
+        }
+    }
+    void obrisiGranu(int polazni, int destinacijski)override{
+        delete matrica[polazni][destinacijski];
+        matrica[polazni][destinacijski] = nullptr;
+    }
+    void postaviTezinuGrane(int polazni, int destinacijski, float tezina=0)override{
+        matrica[polazni][destinacijski]->postaviTezinu(tezina);
+    }
+    float dajTezinuGrane(int polazni, int destinacijski)override{
+        return matrica[polazni][destinacijski]->dajTezinu();
+    }
+    bool postojiGrana(int polazni, int destinacijski)override{
+        if(matrica[polazni][destinacijski]==nullptr)
+        return false;
+        return true;
+    }
+    void postaviOznakuCvora(int broj, TipOznake oznaka)override{
+        cvorovi[broj]->postaviOznaku(oznaka,1);
+    }
+    TipOznake dajOznakuCvora(int broj)override{
+        return cvorovi[broj]->dajOznaku();
+    }
+    void postaviOznakuGrane(int polazni, int destinacijski, TipOznake oznaka)override{
+        matrica[polazni][destinacijski]->postaviOznaku(oznaka,1);
+    }
+    TipOznake dajOznakuGrane(int polazni, int destinacijski)override{
+        return matrica[polazni][destinacijski]->dajOznaku();
+    }
+    void postaviOznakuGraneB(int polazni, int destinacijski)override{
+        matrica[polazni][destinacijski]->postaviOznakuB(1,1);
+    }
+    bool dajOznakuGraneB(int polazni, int destinacijski)override{
+        return matrica[polazni][destinacijski]->dajposjecen();
+    }
+    Cvor<TipOznake> dajCvor(int broj)override{
+        return *cvorovi[broj];
+    }
+    Grana<TipOznake> dajGranu(int polazni, int destinacijski)override{
+        return *matrica[polazni][destinacijski];
+    }
+    Grana<TipOznake> *dajGranui(int polazni, int destinacijski) override{
+        return matrica[polazni][destinacijski];
+    }
+    GranaIterator<TipOznake> dajGranePocetak()override{
+        if(grana1 != nullptr) 
+            delete grana1;
+        grana1= new GranaIterator<TipOznake>(this, prviRed, prvaKolona);
+        matrica[prviRed][prvaKolona]->postaviOznakuB(1);
+        return *grana1;
+    }
+    GranaIterator<TipOznake> dajGraneKraj()override{
+        if(grana2 != nullptr) 
+            delete grana2;
+        grana2=new GranaIterator<TipOznake>(this, brojCvorova-1, brojCvorova-1);
+        return *grana2;
+    }
+};  
+int main(){
+    UsmjereniGraf<bool> *g = new MatricaGraf<bool>(6);
+    g->dodajGranu(0, 1, 2.5);
+    g->dodajGranu(1, 0, 1.2);
+    g->dodajGranu(1, 2, 0.1);
+    g->dodajGranu(0, 0, 3.14);
+    for (GranaIterator<bool> iter = g->dajGranePocetak();
+         iter != g->dajGraneKraj(); ++iter)
+      cout << "(" << (*iter).dajPolazniCvor().dajRedniBroj() << ","
+           << (*iter).dajDolazniCvor().dajRedniBroj() << ") -> "
+           << (*iter).dajTezinu() << "; ";
+  delete g;
+
+    return 0;
+}
