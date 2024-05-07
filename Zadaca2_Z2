@@ -1,0 +1,268 @@
+#include <cmath>
+#include <exception>
+#include <iostream>
+#include <list>
+#include <stdexcept>
+#include <vector>
+
+using namespace std;
+template <typename tip> struct Cvor {
+public:
+  tip a;
+  Cvor *sljedeci = nullptr;
+};
+template <typename tip> class Stek {
+  mutable Cvor<tip> *pocetni;
+  mutable Cvor<tip> *krajni;
+  mutable Cvor<tip> *t;
+  int brElemenata;
+
+public:
+  Stek() {
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata = 0;
+  }
+  ~Stek() {
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *p = nullptr;
+    while (pomocni != nullptr) {
+      p = pomocni->sljedeci;
+      delete pomocni;
+      pomocni = p;
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+  }
+  Stek(Stek<tip> &nova) {
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    brElemenata = nova.brElemenata;
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+  }
+  Stek<tip> &operator=(Stek<tip> &nova) {
+      if(this->pocetni == nova.pocetni){
+          return *this;
+      }
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *pomocni2 = krajni;
+    t = nullptr;
+    for (int i = 0; i < brElemenata; i++) {
+      pomocni2 = krajni;
+      for (pomocni = pocetni; pomocni->sljedeci != krajni;
+           pomocni = pomocni->sljedeci) {
+      }
+      krajni = pomocni;
+      delete pomocni2;
+    }
+    brElemenata = 0;
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+    return *this;
+  }
+  int brojElemenata() const { return brElemenata; }
+  bool sljedeci() const {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == krajni || t->sljedeci == nullptr) {
+      return false;
+    }
+    t = t->sljedeci;
+    return true;
+  }
+  void brisi() {
+    Cvor<tip> *pom = pocetni->sljedeci;
+    while (brElemenata != 1) {
+      delete pocetni;
+      pocetni = pom;
+      pom = pocetni->sljedeci;
+      brElemenata--;
+    };
+    delete pocetni;
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata--;
+  }
+  void dodajIspred(const tip &el) {
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (pocetni == t && t == krajni) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pomocni->sljedeci = pocetni;
+      pocetni = pomocni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    pomocni2->a = el;
+    pomocni2->sljedeci = pocetni;
+    pocetni = pomocni2;
+    brElemenata++;
+  }
+  void dodajIza(const tip &el) {
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (t == krajni) {
+      Cvor<tip> *p = new Cvor<tip>;
+      p->a = el;
+      krajni = p;
+      t->sljedeci = krajni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = pocetni->sljedeci;
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    pocetni->sljedeci = pomocni2;
+    pocetni->sljedeci->a = el;
+    pocetni->sljedeci->sljedeci = pomocni;
+    brElemenata++;
+  }
+  void stavi(tip el) {
+    dodajIspred(el);
+  }
+  tip &vrh() { 
+      if (pocetni == nullptr) {
+          std::__throw_bad_alloc();
+      }
+      return pocetni->a; }
+  tip skini() {
+    tip a;
+    try{
+    a = vrh();
+    }catch(std::exception e){
+        throw e;
+    }
+    Cvor<tip> *pom = pocetni->sljedeci;
+    delete pocetni;
+    pocetni = pom;
+    brElemenata--;
+    return a;
+  }
+};
+void pretraga(Stek<std::vector<int>> &s, int trazeni){
+    std::vector<vector<int>> v;
+    int a = s.brojElemenata();
+    bool pronadjen = false;
+    for(int i = 0; i < a; i++){
+        v.push_back(s.skini());
+        int p1 = 0;
+        int p2 = v[v.size()-1].size()-1;
+        int polovina = (p1+p2)/2;
+        if(p2 < 0) continue;
+        while (p2>=p1) {
+            polovina = (p1+p2)/2;
+            if(v[i][polovina] == trazeni) {
+            std::cout<<polovina<<" "<<s.brojElemenata()<<"\n";
+            pronadjen = true;
+            break;
+            }
+            else if(v[v.size()-1][polovina] < trazeni) p1 = polovina + 1;
+            else if(v[v.size()-1][polovina] > trazeni) p2 = polovina -1;
+        }
+        if(v[v.size()-1][0] < trazeni && pronadjen == false){
+            for(int j = v.size() -1 ; j>=0; j--)
+                s.stavi(v[j]);
+                break;
+        }
+        
+        if(pronadjen == true){
+            for(int j = v.size() -1 ; j>=0; j--)
+                s.stavi(v[j]);
+                break;
+        }
+    }
+    if(pronadjen == false){
+            std::cout<<"Nema elementa\n";
+    }
+}
+void Prva(){
+    Stek<std::vector<int>> s;
+    std::vector<int> a;
+    for(int i = 0; i<5; i++){
+        a.push_back(i);
+    }
+    std::vector<int> b;
+    for(int i = 5; i<8; i++){
+        b.push_back(i);
+    }
+    s.stavi(a);
+    s.stavi(b);
+    pretraga(s,6);
+}
+void Druga(){
+    Stek<std::vector<int>> s;
+    std::vector<int> a;
+    for(int i = 0; i<5; i++){
+        a.push_back(i);
+    }
+    std::vector<int> b;
+    for(int i = 5; i<8; i++){
+        b.push_back(i);
+    }
+    s.stavi(a);
+    s.stavi(b);
+    pretraga(s,11);
+}
+void Treca(){
+    Stek<std::vector<int>> s;
+    std::vector<int> a;
+    for(int i = 0; i<5; i++){
+        a.push_back(i);
+    }
+    std::vector<int> b;
+    for(int i = 5; i<8; i++){
+        b.push_back(i);
+    }
+    s.stavi(a);
+    s.stavi(b);
+    pretraga(s,3);
+}
+
+int main() {
+    Prva();
+    Druga();
+    Treca();
+    return 0;
+}
