@@ -1,0 +1,324 @@
+#include <cmath>
+#include <iostream>
+#include <list>
+#include <stdexcept>
+
+using namespace std;
+template <typename Tip> class Lista {
+public:
+  Lista(){};
+  virtual ~Lista(){};
+  virtual int brojElemenata() const = 0;
+  virtual Tip &trenutni() = 0;
+  virtual Tip trenutni() const = 0;
+  virtual bool prethodni() const = 0;
+  virtual bool sljedeci() const = 0;
+  virtual void pocetak() const = 0;
+  virtual void kraj() const = 0;
+  virtual void obrisi() = 0;
+  virtual void dodajIspred(const Tip &el) = 0;
+  virtual void dodajIza(const Tip &el) = 0;
+  virtual Tip &operator[](int i) = 0;
+  virtual Tip operator[](int i) const = 0;
+};
+
+template <typename tip> struct Cvor {
+  tip a;
+  Cvor *sljedeci = nullptr;
+  Cvor *prethodni = nullptr;
+};
+template <typename tip> class DvostrukaLista : public Lista<tip> {
+  mutable Cvor<tip> *pocetni;
+  mutable Cvor<tip> *krajni;
+  mutable Cvor<tip> *t;
+  int brElemenata;
+
+public:
+  Cvor<tip> *MEGARibi() const {
+    if (pocetni == nullptr) {
+      return nullptr;
+    } else if (pocetni == t) {
+      return t;
+    }
+    Cvor<tip> *ribi;
+    for (ribi = pocetni; ribi->sljedeci != t; ribi = ribi->sljedeci) {
+    }
+    return ribi;
+  }
+  DvostrukaLista() {
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata = 0;
+  }
+  ~DvostrukaLista() {
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *p = nullptr;
+    while (pomocni != nullptr) {
+      p = pomocni->sljedeci;
+      delete pomocni;
+      pomocni = p;
+    }
+ 
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    pomocni = nullptr;
+    brElemenata = 0;
+  }
+  DvostrukaLista(DvostrukaLista<tip> &nova) {
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    brElemenata = 0;
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        this->dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+  }
+  DvostrukaLista<tip> &operator=(DvostrukaLista<tip> &nova) {
+    if (this->pocetni == nova.pocetni) {
+      return *this;
+    }
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *pomocni2 = krajni;
+    if (pocetni == nullptr) {
+      goto jump;
+    }
+    t = nullptr;
+    for (int i = 0; i < brElemenata; i++) {
+      pomocni2 = krajni;
+      for (pomocni = pocetni; pomocni->sljedeci != krajni;
+           pomocni = pomocni->sljedeci) {
+      }
+      krajni = pomocni;
+      delete pomocni2;
+    }
+  jump:
+    delete pomocni2;
+    brElemenata = 0;
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+    return *this;
+  }
+  int brojElemenata() const override { return brElemenata; }
+  tip &trenutni() override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  tip trenutni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  bool prethodni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == pocetni) {
+      return false;
+    }
+    t = t->prethodni;
+    return true;
+  }
+  bool sljedeci() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == krajni || t->sljedeci == nullptr) {
+      return false;
+    }
+    t = t->sljedeci;
+    return true;
+  }
+  void pocetak() const override {
+    if (pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = pocetni;
+  }
+  void kraj() const override {
+    if (krajni == nullptr && pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = krajni;
+  }
+  void obrisi() override {
+    if (brElemenata == 0) {
+      std::__throw_domain_error("Lista je prazna!!!");
+    } else if (brElemenata == 1) {
+      brElemenata--;
+      delete t;
+      pocetni = nullptr;
+      t = nullptr;
+      krajni = nullptr;
+    } else if (t == pocetni) {
+      brElemenata--;
+      Cvor<tip> *pomocni;
+      pomocni = t->sljedeci;
+      delete t;
+      t = pomocni;
+      pocetni = t;
+      t->prethodni = nullptr;
+    } else if (t == krajni) {
+      krajni = krajni->prethodni;
+      krajni->sljedeci = nullptr;
+      delete t;
+      t = krajni;
+      brElemenata--;
+    } else {
+      Cvor<tip> *pomocni1, *pomocni2;
+      pomocni1 = t->sljedeci;
+      pomocni2 = t->prethodni;
+      delete t;
+      t = pomocni1;
+      pomocni2->sljedeci = pomocni1;
+      pomocni1->prethodni = pomocni2;
+      brElemenata--;
+    }
+  }
+  void dodajIza(const tip &el) override {
+    if (brElemenata == 0) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+    } else if (brElemenata == 1) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pomocni->prethodni = pocetni;
+      pocetni->sljedeci = pomocni;
+      krajni = pomocni;
+      brElemenata++;
+    } else if (t == krajni) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pomocni->prethodni = t;
+      t->sljedeci = pomocni;
+      krajni = pomocni;
+      brElemenata++;
+    } else {
+      Cvor<tip> *pomocni1, *pomocni2;
+      pomocni1 = new Cvor<tip>();
+      pomocni1->a = el;
+      pomocni2 = t->sljedeci;
+      t->sljedeci = pomocni1;
+      pomocni2->prethodni = pomocni1;
+      pomocni1->prethodni = t;
+      pomocni1->sljedeci = pomocni2;
+      brElemenata++;
+    }
+  }
+  void dodajIspred(const tip &el) override {
+    if (brElemenata == 0) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+    } else if (brElemenata == 1 || t == pocetni) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pocetni = pomocni;
+      pomocni->sljedeci = t;
+      t->prethodni = pomocni;
+      brElemenata++;
+    } else {
+      Cvor<tip> *pomocni1, *pomocni2;
+      pomocni1 = new Cvor<tip>();
+      pomocni2 = t->prethodni;
+      pomocni1->a = el;
+      pomocni1->sljedeci = t;
+      pomocni1->prethodni = pomocni2;
+      pomocni2->sljedeci = pomocni1;
+      t->prethodni = pomocni1;
+      brElemenata++;
+    }
+  }
+  tip &operator[](int i) override {
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cvor<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+  tip operator[](int i) const override {
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cvor<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+};
+template <typename Tip> Tip dajMaksimum(const Lista<Tip> &n) {
+  Tip max = n[0];
+  Cvor<Tip> *pomocni = new Cvor<Tip>();
+  pomocni->a = n.trenutni();
+  n.pocetak();
+  for (int i = 0; i < n.brojElemenata(); i++) {
+    if (n.trenutni() > max) {
+      max = n.trenutni();
+    }
+    n.sljedeci();
+  }
+  while (n.trenutni() != pomocni->a) {
+    n.prethodni();
+  }
+  delete pomocni;
+  return max;
+}
+int main() {
+  DvostrukaLista<int> lista;
+  for (int i(1); i <= 5; i++)
+    lista.dodajIspred(i);
+  {
+    // Konstruktor kopije
+    DvostrukaLista<int> lista2(lista);
+    DvostrukaLista<int> lista3;
+    // Operator dodjele
+    (lista3 = lista).brojElemenata();
+    // Destruktivna samododjela
+    (lista = lista).brojElemenata();
+
+    lista.obrisi();
+    std::cout << lista2.brojElemenata() << " " << lista2[2];
+    std::cout << " " << lista3.brojElemenata() << " " << lista3[2] << " ";
+  }
+  std::cout << lista.brojElemenata() << " " << lista[2];
+  return 0;
+}
