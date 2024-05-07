@@ -1,0 +1,415 @@
+#include <cmath>
+#include <iostream>
+#include <list>
+#include <stdexcept>
+#include <string>
+
+using namespace std;
+template <typename Tip> class Lista {
+public:
+  Lista(){};
+  virtual ~Lista(){};
+  virtual int brojElemenata() const = 0;
+  virtual Tip &trenutni() = 0;
+  virtual Tip trenutni() const = 0;
+  virtual bool prethodni() const = 0;
+  virtual bool sljedeci() const = 0;
+  virtual void pocetak() const = 0;
+  virtual void kraj() const = 0;
+  virtual void obrisi() = 0;
+  virtual void dodajIspred(const Tip &el) = 0;
+  virtual void dodajIza(const Tip &el) = 0;
+  virtual Tip &operator[](int i) = 0;
+  virtual Tip operator[](int i) const = 0;
+  virtual void izbrisi() = 0;
+};
+
+template <typename tip> struct Cvor {
+  tip a;
+  Cvor *sljedeci = nullptr;
+};
+template <typename tip> class JednostrukaLista : public Lista<tip> {
+  mutable Cvor<tip> *pocetni;
+  mutable Cvor<tip> *krajni;
+  mutable Cvor<tip> *t;
+  int brElemenata;
+
+public:
+    void izbrisi() override{
+        Cvor<tip> *pom = pocetni;
+        pocetni = pocetni->sljedeci;
+        while (pom != nullptr) {
+            pocetni = pom->sljedeci;
+            delete pom;
+            pom = pocetni;
+        }
+        pocetni = nullptr;
+        krajni = nullptr;
+        t = nullptr;
+        brElemenata = 0;
+    }
+  Cvor<tip> *MEGARibi() const {
+    if (pocetni == nullptr) {
+      return nullptr;
+    } else if (pocetni == t) {
+      return t;
+    }
+    Cvor<tip> *ribi;
+    for (ribi = pocetni; ribi->sljedeci != t; ribi = ribi->sljedeci) {
+    }
+    return ribi;
+  }
+  JednostrukaLista() {
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata = 0;
+  }
+  ~JednostrukaLista() {
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *p = nullptr;
+    while (pomocni != nullptr) {
+      p = pomocni->sljedeci;
+      delete pomocni;
+      pomocni = p;
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+  }
+  JednostrukaLista(JednostrukaLista<tip> &nova) {
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    brElemenata = nova.brElemenata;
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+  }
+  JednostrukaLista<tip> &operator=(JednostrukaLista<tip> &nova) {
+      if(pocetni == nova.pocetni) return *this;
+    Cvor<tip> *pomocni = pocetni;
+    Cvor<tip> *pomocni2 = krajni;
+    t = nullptr;
+    for (int i = 0; i < brElemenata; i++) {
+      pomocni2 = krajni;
+      for (pomocni = pocetni; pomocni->sljedeci != nullptr;
+           pomocni = pomocni->sljedeci) {
+      }
+      krajni = pomocni;
+      delete pomocni2;
+    }
+    brElemenata = nova.brElemenata;
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cvor<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+    return *this;
+  }
+  int brojElemenata() const override { return brElemenata; }
+  tip &trenutni() override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  tip trenutni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  bool prethodni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == pocetni) {
+      return false;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = MEGARibi();
+    t = pomocni;
+    return true;
+  }
+  bool sljedeci() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == krajni || t->sljedeci == nullptr) {
+      return false;
+    }
+    t = t->sljedeci;
+    return true;
+  }
+  void pocetak() const override {
+    if (pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = pocetni;
+  }
+  void kraj() const override {
+    if (krajni == nullptr && pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = krajni;
+  }
+  void obrisi() override{
+    if (pocetni == nullptr) {
+      return;
+    } else if (pocetni == t && t == krajni) {
+      delete t;
+      pocetni = nullptr;
+      t = nullptr;
+      krajni = nullptr;
+      brElemenata--;
+      return;
+    } else if (t == krajni) {
+      brElemenata--;
+      Cvor<tip> *pomocni;
+      pomocni = MEGARibi();
+      pomocni->sljedeci = t->sljedeci;
+      delete t;
+      t = pomocni;
+      krajni = t;
+      return;
+    } else if (pocetni == t) {
+      pocetni = pocetni->sljedeci;
+      delete t;
+      t = pocetni;
+      brElemenata--;
+      return;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = MEGARibi();
+    if (pomocni == nullptr) {
+      return;
+    }
+    pomocni->sljedeci = t->sljedeci;
+    delete t;
+    t = pomocni->sljedeci;
+    brElemenata--;
+  }
+  void dodajIspred(const tip &el) override{
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (pocetni == t && t == krajni) {
+      Cvor<tip> *pomocni = new Cvor<tip>;
+      pomocni->a = el;
+      pomocni->sljedeci = pocetni;
+      pocetni = pomocni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = MEGARibi();
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    pomocni->sljedeci = pomocni2;
+    pomocni->sljedeci->a = el;
+    pomocni2->sljedeci = t;
+    brElemenata++;
+  }
+  void dodajIza(const tip &el) override{
+    if (pocetni == nullptr) {
+      pocetni = new Cvor<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (t == krajni) {
+      Cvor<tip> *p = new Cvor<tip>;
+      p->a = el;
+      krajni = p;
+      t->sljedeci = krajni;
+      brElemenata++;
+      return;
+    }
+    Cvor<tip> *pomocni;
+    pomocni = t->sljedeci;
+    Cvor<tip> *pomocni2 = new Cvor<tip>;
+    t->sljedeci = pomocni2;
+    t->sljedeci->a = el;
+    t->sljedeci->sljedeci = pomocni;
+    brElemenata++;
+  }
+  tip &operator[](int i) override{
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cvor<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+  tip operator[](int i) const override {
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cvor<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+};
+
+template <typename tip1, typename tip2> class Mapa{
+    public:
+    Mapa(){}
+    virtual ~Mapa() {}
+    virtual void obrisi() = 0;
+    virtual void obrisi(const tip1 &k) = 0;
+    virtual int brojElemenata() const = 0;
+    virtual tip2 &operator[](const tip1 &k) = 0;
+    virtual tip2 operator[](const tip1 &k) const = 0;
+};
+template <typename tip1, typename tip2> 
+class NizMapa : public Mapa<tip1,tip2>{
+     JednostrukaLista<pair<tip1,tip2>> l;
+     int brElemenata = 0;
+
+public:
+    NizMapa<tip1,tip2>(){
+    }
+    ~NizMapa<tip1,tip2>(){
+        l.izbrisi();
+        brElemenata = 0;
+    }
+    void obrisi(){
+        l.izbrisi();
+        brElemenata = 0;
+    }
+    int brojElemenata() const {return brElemenata;}
+    void obrisi(const tip1 &k){
+        l.pocetak();
+        int i = 0;
+        do{
+            if(l.trenutni().first == k)
+            break;
+            l.sljedeci();
+        }while(i<l.brojElemenata());
+        if(i == l.brojElemenata() and l[i].first != k){
+            throw std::domain_error("Ne postoji kljucna vrijednost!!");
+        }
+        else {
+            l.obrisi();
+            brElemenata--;
+        }
+    }
+    tip2 operator[](const tip1 &k) const{
+        for(int i = 0; i<l.brojElemenata(); i++){
+            if(l[i].first ==k )
+                return l[i].second;
+        }
+        return tip2();
+    }
+    tip2 &operator[](const tip1 &k){
+        bool pronadjen = false;
+        for(int i = 0; i<l.brojElemenata(); i++){
+            if(l[i].first ==k )
+                return l[i].second;
+        }
+        l.kraj();
+        l.dodajIza(pair<tip1,tip2>(k,tip2()));
+        brElemenata++;
+        l.kraj();
+        return l.trenutni().second;
+    }
+};
+    void TestStringInt(){
+        NizMapa<string, int> m;
+        m["Sarajevo"] = 1;
+        m["Tuzla"] = 2;
+        m["Zenica"] = 3;
+        std::cout<<m["Sarajevo"]<<","<<m["Tuzla"]<<","<<m["Zenica"]<<" : Ukoliko pise 1,2,3 RADI."<<std::endl;
+    }
+    void TestStringChar(){
+        NizMapa<string, char> m;
+        m["Sarajevo"] = 'D';
+        m["Tuzla"] = 'E';
+        m["Zenica"] = 'F';
+        std::cout<<m["Sarajevo"]<<","<<m["Tuzla"]<<","<<m["Zenica"]<<" : Ukoliko pise D,E,F RADI."<<std::endl;
+    }
+    void TestIntChar(){
+        NizMapa<int, char> m;
+        m[1] = 'A';
+        m[2] = 'B';
+        m[3] = 'C';
+        std::cout<<m[1]<<","<<m[2]<<","<<m[3]<<" : Ukoliko pise A,B,C RADI."<<std::endl;
+    }
+    void TestDodjele(){
+        NizMapa<int, int> m;
+        m[1] = 1;
+        m[2] = 3;
+        m[3] = 5;
+        m[4] = 7;
+        m[5] = 9;
+        NizMapa<int, int> m1(m);
+        NizMapa<int, int> m2;
+        m2 = m;
+        std::cout<<m1[1]<<","<<m1[2]<<","<<m1[3]<<","<<m1[4]<<","<<m1[5]<<std::endl;
+        std::cout<<m2[1]<<","<<m2[2]<<","<<m2[3]<<","<<m2[4]<<","<<m2[5]<<std::endl;
+        std::cout<<"Ukoliko oba prethodna reda daju rezultate 1,3,5,7,9 onda RADI"<<std::endl;
+    }
+    void TestBrojElemenata(){
+        NizMapa<int, int> m;
+        m[1] = 1;
+        m[2] = 3;
+        m[3] = 5;
+        m[4] = 7;
+        m[5] = 9;
+        std::cout<<m.brojElemenata()<<" : Ukoliko pise 5 onda RADI"<<std::endl;
+    }
+    void TestObrisi(){
+        NizMapa<int, int> m;
+        m[1] = 1;
+        m[2] = 3;
+        m[3] = 5;
+        m[4] = 7;
+        m[5] = 9; 
+        m.obrisi(1);
+        std::cout<<m.brojElemenata()<<" : Ukoliko pise 4 onda RADI"<<std::endl;
+    }
+int main(){
+    TestStringInt();
+    TestStringChar();
+    TestIntChar();
+    TestDodjele();
+    TestBrojElemenata();
+    TestObrisi();
+    NizMapa <int, int> m;
+for (int i(1000); i>-1000; i--)
+    m[i] = i*i;
+cout << m[-100];
+    return 0;
+}
