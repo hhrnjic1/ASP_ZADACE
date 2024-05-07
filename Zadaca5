@@ -1,0 +1,1014 @@
+#include <algorithm>
+#include <chrono>
+#include <iostream>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <type_traits>
+#include <vector>
+
+using namespace std;
+using namespace std::chrono;
+
+template <typename Tip> class Lista {
+public:
+  Lista(){};
+  virtual ~Lista(){};
+  virtual int brojElemenata() const = 0;
+  virtual Tip &trenutni() = 0;
+  virtual Tip trenutni() const = 0;
+  virtual bool prethodni() const = 0;
+  virtual bool sljedeci() const = 0;
+  virtual void pocetak() const = 0;
+  virtual void kraj() const = 0;
+  virtual void obrisi() = 0;
+  virtual void obrisisve() = 0;
+  virtual void dodajIspred(const Tip &el) = 0;
+  virtual void dodajIza(const Tip &el) = 0;
+  virtual Tip &operator[](int i) = 0;
+  virtual Tip operator[](int i) const = 0;
+};
+template <typename tip> struct Cv {
+  tip a;
+  Cv *sljedeci = nullptr;
+};
+template <typename tip> class JednostrukaLista : public Lista<tip> {
+  mutable Cv<tip> *pocetni;
+  mutable Cv<tip> *krajni;
+  mutable Cv<tip> *t;
+  int brElemenata;
+
+public:
+  Cv<tip> *MEGARibi() const {
+    if (pocetni == nullptr) {
+      return nullptr;
+    } else if (pocetni == t) {
+      return t;
+    }
+    Cv<tip> *ribi;
+    for (ribi = pocetni; ribi->sljedeci != t; ribi = ribi->sljedeci) {
+    }
+    return ribi;
+  }
+  JednostrukaLista() {
+    pocetni = nullptr;
+    krajni = nullptr;
+    t = nullptr;
+    brElemenata = 0;
+  }
+  ~JednostrukaLista() {
+    Cv<tip> *pomocni = pocetni;
+    Cv<tip> *p = nullptr;
+    while (pomocni != nullptr) {
+      p = pomocni->sljedeci;
+      delete pomocni;
+      pomocni = p;
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+  }
+  JednostrukaLista(JednostrukaLista<tip> &nova) {
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    brElemenata = nova.brElemenata;
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cv<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+  }
+  JednostrukaLista<tip> &operator=(JednostrukaLista<tip> &nova) {
+    Cv<tip> *pomocni = pocetni;
+    Cv<tip> *pomocni2 = krajni;
+    t = nullptr;
+    for (int i = 0; i < brElemenata; i++) {
+      pomocni2 = krajni;
+      for (pomocni = pocetni; pomocni->sljedeci != krajni;
+           pomocni = pomocni->sljedeci) {
+      }
+      krajni = pomocni;
+      delete pomocni2;
+    }
+    brElemenata = nova.brElemenata;
+    if (nova.brElemenata == 0) {
+      std::__throw_bad_alloc();
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    for (Cv<tip> *pomocni = nova.pocetni; pomocni != nullptr;
+         pomocni = pomocni->sljedeci) {
+      if (pomocni == nova.pocetni) {
+        dodajIza(pomocni->a);
+        continue;
+      }
+      dodajIza(pomocni->a);
+      sljedeci();
+    }
+    brElemenata = nova.brElemenata;
+    return *this;
+  }
+  int brojElemenata() const override { return brElemenata; }
+  tip &trenutni() override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  tip trenutni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    return t->a;
+  }
+  bool prethodni() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == pocetni) {
+      return false;
+    }
+    Cv<tip> *pomocni;
+    pomocni = MEGARibi();
+    t = pomocni;
+    return true;
+  }
+  bool sljedeci() const override {
+    if (brElemenata == 0) {
+      std::__throw_overflow_error("Lista je prazna!!");
+    }
+    if (t == krajni || t->sljedeci == nullptr) {
+      return false;
+    }
+    t = t->sljedeci;
+    return true;
+  }
+  void pocetak() const override {
+    if (pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = pocetni;
+  }
+  void kraj() const override {
+    if (krajni == nullptr && pocetni == nullptr) {
+      std::out_of_range("Lista je prazna");
+    }
+    t = krajni;
+  }
+  void obrisisve() override {
+    Cv<tip> *p = pocetni, *d = nullptr;
+    while (p != nullptr) {
+      d = p->sljedeci;
+      delete (p);
+      p = d;
+    }
+    pocetni = nullptr;
+    t = nullptr;
+    krajni = nullptr;
+    brElemenata = 0;
+  }
+  void obrisi() override {
+    if (pocetni == nullptr) {
+      return;
+    } else if (pocetni == t && t == krajni) {
+      delete t;
+      pocetni = nullptr;
+      t = nullptr;
+      krajni = nullptr;
+      brElemenata--;
+      return;
+    } else if (t == krajni) {
+      brElemenata--;
+      Cv<tip> *pomocni;
+      pomocni = MEGARibi();
+      pomocni->sljedeci = t->sljedeci;
+      delete t;
+      t = pomocni;
+      krajni = t;
+      return;
+    } else if (pocetni == t) {
+      pocetni = pocetni->sljedeci;
+      delete t;
+      t = pocetni;
+      brElemenata--;
+      return;
+    }
+    Cv<tip> *pomocni;
+    pomocni = MEGARibi();
+    if (pomocni == nullptr) {
+      return;
+    }
+    pomocni->sljedeci = t->sljedeci;
+    delete t;
+    t = pomocni->sljedeci;
+    brElemenata--;
+  }
+  void dodajIspred(const tip &el) override {
+    if (pocetni == nullptr) {
+      pocetni = new Cv<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (pocetni == t && t == krajni) {
+      Cv<tip> *pomocni = new Cv<tip>;
+      pomocni->a = el;
+      pomocni->sljedeci = pocetni;
+      pocetni = pomocni;
+      brElemenata++;
+      return;
+    }
+    Cv<tip> *pomocni;
+    pomocni = MEGARibi();
+    Cv<tip> *pomocni2 = new Cv<tip>;
+    pomocni->sljedeci = pomocni2;
+    pomocni->sljedeci->a = el;
+    pomocni2->sljedeci = t;
+    brElemenata++;
+  }
+  void dodajIza(const tip &el) override {
+    if (pocetni == nullptr) {
+      pocetni = new Cv<tip>;
+      pocetni->a = el;
+      t = pocetni;
+      krajni = pocetni;
+      brElemenata++;
+      return;
+    } else if (t == krajni) {
+      Cv<tip> *p = new Cv<tip>;
+      p->a = el;
+      krajni = p;
+      t->sljedeci = krajni;
+      brElemenata++;
+      return;
+    }
+    Cv<tip> *pomocni;
+    pomocni = t->sljedeci;
+    Cv<tip> *pomocni2 = new Cv<tip>;
+    t->sljedeci = pomocni2;
+    t->sljedeci->a = el;
+    t->sljedeci->sljedeci = pomocni;
+    brElemenata++;
+  }
+  tip &operator[](int i) override {
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cv<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+  tip operator[](int i) const override {
+    if (i > brElemenata || i < 0) {
+      std::out_of_range("Broj izvan opsega liste!!");
+    }
+    int br = 0;
+    Cv<tip> *pomocni;
+    for (pomocni = pocetni; br != i; pomocni = pomocni->sljedeci) {
+      br++;
+    }
+    return pomocni->a;
+  }
+};
+
+template <typename tip1, typename tip2> class Mapa {
+public:
+  Mapa() {}
+  virtual ~Mapa() {}
+  virtual void obrisi() = 0;
+  virtual void obrisi(const tip1 &k) = 0;
+  virtual int brojElemenata() const = 0;
+  virtual tip2 &operator[](const tip1 &k) = 0;
+  virtual tip2 operator[](const tip1 &k) const = 0;
+};
+template <typename tip1, typename tip2>
+class NizMapa : public Mapa<tip1, tip2> {
+  JednostrukaLista<pair<tip1, tip2>> l;
+  int brElemenata = 0;
+
+public:
+  NizMapa<tip1, tip2>() {}
+  ~NizMapa<tip1, tip2>() {
+    l.izbrisi();
+    brElemenata = 0;
+  }
+  void obrisi() {
+    l.izbrisi();
+    brElemenata = 0;
+  }
+  int brojElemenata() const { return brElemenata; }
+  void obrisi(const tip1 &k) {
+    l.pocetak();
+    int i = 0;
+    do {
+      if (l.trenutni().first == k)
+        break;
+      l.sljedeci();
+    } while (i < l.brojElemenata());
+    if (i == l.brojElemenata() and l[i].first != k) {
+      throw std::domain_error("Ne postoji kljucna vrijednost!!");
+    } else {
+      l.obrisi();
+      brElemenata--;
+    }
+  }
+  tip2 operator[](const tip1 &k) const {
+    for (int i = 0; i < l.brojElemenata(); i++) {
+      if (l[i].first == k)
+        return l[i].second;
+    }
+    return tip2();
+  }
+  tip2 &operator[](const tip1 &k) {
+    bool pronadjen = false;
+    for (int i = 0; i < l.brojElemenata(); i++) {
+      if (l[i].first == k)
+        return l[i].second;
+    }
+    l.kraj();
+    l.dodajIza(pair<tip1, tip2>(k, tip2()));
+    brElemenata++;
+    l.kraj();
+    return l.trenutni().second;
+  }
+};
+template <typename tip1, typename tip2> class CvorStablo {
+public:
+  tip1 kljuc;
+  tip2 vrijednost;
+  CvorStablo *lijevi = nullptr;
+  CvorStablo *desni = nullptr;
+  CvorStablo *roditelj = nullptr;
+};
+template <typename tip1, typename tip2>
+class BinStabloMapa : public Mapa<tip1, tip2> {
+private:
+  CvorStablo<tip1, tip2> *korijen = nullptr;
+  int brElemenata = 0;
+  CvorStablo<tip1, tip2> *Trazi(CvorStablo<tip1, tip2> *r,
+                                tip1 const &k) const {
+    if (r == nullptr || k == r->kljuc)
+      return r;
+    else if (k < r->kljuc)
+      return Trazi(r->lijevi, k);
+    else
+      return Trazi(r->desni, k);
+  }
+  void Brisi(CvorStablo<tip1, tip2> *r) {
+    if (r) {
+      Brisi(r->lijevi);
+      Brisi(r->desni);
+      delete r;
+    }
+  }
+  CvorStablo<tip1, tip2> *KonstruisiNoviCvor(CvorStablo<tip1, tip2> *m) {
+    if (m) {
+      CvorStablo<tip1, tip2> *p = new CvorStablo<tip1, tip2>();
+      p->kljuc = m->kljuc;
+      p->vrijednost = m->vrijednost;
+      p->lijevi = KonstruisiNoviCvor(p->lijevi);
+      p->desni = KonstruisiNoviCvor(p->desni);
+      return p;
+    }
+    return nullptr;
+  }
+
+public:
+  BinStabloMapa<tip1, tip2>() {}
+  ~BinStabloMapa<tip1, tip2>() { obrisi(); }
+  BinStabloMapa(BinStabloMapa &b) {
+    korijen = KonstruisiNoviCvor(b.korijen);
+    brElemenata = b.brElemenata;
+  }
+  BinStabloMapa<tip1, tip2> &operator=(BinStabloMapa<tip1, tip2> &b) {
+    if (korijen == b.korijen)
+      return *this;
+    this->obrisi();
+    korijen = KonstruisiNoviCvor(b.korijen);
+    brElemenata = b.brElemenata;
+    return *this;
+  }
+  void obrisi() override {
+    Brisi(korijen);
+    korijen = nullptr;
+    brElemenata = 0;
+  }
+  void obrisi(const tip1 &k) override {
+    CvorStablo<tip1, tip2> *p = korijen;
+    CvorStablo<tip1, tip2> *temp = 0;
+    CvorStablo<tip1, tip2> *q = 0;
+    CvorStablo<tip1, tip2> *rp = 0;
+    CvorStablo<tip1, tip2> *pp = 0;
+
+    if (brElemenata == 1) {
+      korijen->lijevi = nullptr;
+      korijen->desni = nullptr;
+      korijen->roditelj = nullptr;
+      delete korijen;
+      brElemenata = 0;
+      korijen = nullptr;
+      return;
+    }
+    // trazenje
+    while (p != 0 && k != p->kljuc) {
+      q = p;
+      if (k < p->kljuc)
+        p = p->lijevi;
+      else
+        p = p->desni;
+    }
+    if (p == 0)
+      return;
+    // brisanje
+    if (p->lijevi == 0)
+      rp = p->desni;
+    else if (p->desni == 0)
+      rp = p->lijevi;
+    else {
+      pp = p;
+      rp = pp->lijevi;
+      temp = rp->desni;
+      while (temp != 0) {
+        pp = rp;
+        rp = temp;
+        temp = rp->desni;
+      }
+      if (pp != p) {
+        pp->desni = rp->lijevi;
+        rp->lijevi = p->lijevi;
+      }
+      rp->desni = p->desni;
+    }
+    if (q == 0)
+      korijen = rp;
+    else if (p == q->lijevi)
+      q->lijevi = rp;
+    else
+      q->desni = rp;
+    delete p;
+    p = 0;
+    brElemenata--;
+  }
+  int brojElemenata() const override { return brElemenata; }
+  tip2 &operator[](const tip1 &k) override {
+    CvorStablo<tip1, tip2> *pom = Trazi(korijen, k);
+    if (pom == nullptr) {
+      brElemenata++;
+      CvorStablo<tip1, tip2> *novi = new CvorStablo<tip1, tip2>();
+      novi->kljuc = k;
+      novi->vrijednost = tip2();
+      CvorStablo<tip1, tip2> *y = nullptr;
+      CvorStablo<tip1, tip2> *x = korijen;
+      while (x != nullptr) {
+        y = x;
+        if (novi->kljuc < x->kljuc)
+          x = x->lijevi;
+        else
+          x = x->desni;
+      }
+      if (y == nullptr)
+        korijen = novi;
+      else if (novi->kljuc < y->kljuc)
+        y->lijevi = novi;
+      else
+        y->desni = novi;
+      return novi->vrijednost;
+    }
+    return pom->vrijednost;
+  }
+  tip2 operator[](const tip1 &k) const override {
+    CvorStablo<tip1, tip2> *pom = Trazi(korijen, k);
+    if (pom == nullptr)
+      return tip2();
+    return pom->vrijednost;
+  }
+};
+
+template <typename tip1, typename tip2>
+class HashMapaLan : public Mapa<tip1, tip2> {
+  mutable JednostrukaLista<JednostrukaLista<pair<tip1, tip2>> *> lista;
+  mutable int brElemenata = 0;
+  unsigned int (*hash)(tip1, unsigned int) = nullptr;
+  void prosiri(int n = 100) {
+    n = 100;
+    if (lista.brojElemenata() != 0)
+      lista.kraj();
+    int i = 0;
+    while (i < n) {
+      JednostrukaLista<pair<tip1, tip2>> *t =
+          new JednostrukaLista<pair<tip1, tip2>>();
+      lista.dodajIza(t);
+      i++;
+    }
+  }
+
+public:
+  HashMapaLan<tip1, tip2>() {}
+  ~HashMapaLan<tip1, tip2>() { obrisi(); }
+  HashMapaLan<tip1, tip2>(HashMapaLan<tip1, tip2> &mapa) {
+    brElemenata = mapa.brElemenata;
+    prosiri(mapa.brElemenata);
+    for (int i = 0; i < mapa.lista.brojElemenata(); i++) {
+      *lista[i] = *mapa.lista[i];
+    }
+    hash = mapa.hash;
+  }
+  HashMapaLan<tip1, tip2> &operator=(HashMapaLan<tip1, tip2> &mapa) {
+    if (this == &mapa)
+      return *this;
+    obrisi();
+    brElemenata = mapa.brElemenata;
+    prosiri(mapa.brElemenata);
+    for (int i = 0; i < mapa.lista.brojElemenata(); i++) {
+      *lista[i] = *mapa.lista[i];
+    }
+    hash = mapa.hash;
+    return *this;
+  }
+  void definisiHashFunkciju(unsigned int (*funkcija)(tip1, unsigned int)) {
+    hash = funkcija;
+  }
+  int brojElemenata() const override { return brElemenata; }
+  void obrisi() {
+    for (int i = 0; i < lista.brojElemenata(); i++) {
+      lista[i]->obrisisve();
+      delete lista[i];
+      lista[i] = nullptr;
+    }
+    lista.obrisisve();
+    brElemenata = 0;
+  }
+  void obrisi(const tip1 &kljuc) {
+    lista.pocetak();
+    for (int i = 0; i < lista.brojElemenata(); i++) {
+      if (lista[i]->brojElemenata() != 0) {
+        lista[i]->pocetak();
+        for (int j = 0; j < lista[i]->brojElemenata(); j++) {
+          if ((*lista[i])[j].first == kljuc) {
+            lista[i]->obrisi();
+            brElemenata--;
+            return;
+          }
+          lista[i]->sljedeci();
+        }
+      }
+      lista.sljedeci();
+    }
+  }
+  tip2 &operator[](const tip1 &kljuc) {
+    if (hash == nullptr)
+      throw domain_error("Hash funkcija nije definisana!");
+    if (lista.brojElemenata() == 0)
+      prosiri();
+
+    int i = hash(kljuc, lista.brojElemenata());
+    if (lista[i]->brojElemenata() == 0) {
+      lista[i]->dodajIza(pair<tip1, tip2>(kljuc, tip2()));
+      brElemenata++;
+      return (*lista[i])[0].second;
+    }
+    int j = 0;
+    while (j < lista[i]->brojElemenata()) {
+      if ((*lista[i])[j].first == kljuc)
+        return (*lista[i])[j].second;
+      j++;
+    }
+    lista[i]->kraj(); // Mozda greska
+    lista[i]->dodajIza(pair<tip1, tip2>(kljuc, tip2()));
+    brElemenata++;
+    return (*lista[i])[lista[i]->brojElemenata() - 1].second;
+  }
+  tip2 operator[](const tip1 &kljuc) const {
+    if (hash == nullptr)
+      throw domain_error("Hash funkcija nije definisana!");
+    int i = hash(kljuc, lista.brojElemenata());
+    int j = 0;
+    while (j < lista[i]->brojElemenata()) {
+      if ((*lista[i])[j].first == kljuc)
+        return (*lista[i])[j].second;
+      j++;
+    }
+    return tip2();
+  }
+};
+
+template <typename TipOznake> class GranaIterator;
+template <typename TipOznake> class Cvor;
+template <typename TipOznake> class Grana;
+
+template <typename TipOznake> class UsmjereniGraf {
+public:
+  UsmjereniGraf(){};
+  virtual ~UsmjereniGraf() {}
+  virtual int dajBrojCvorova() = 0;
+  virtual void postaviBrojCvorova(int br) = 0;
+  virtual void dodajGranu(int pocetni, int destinacijski, float tezina = 0) = 0;
+  virtual void obrisiGranu(int pocetni, int destinacijski) = 0;
+  virtual void postaviTezinuGrane(int pocetni, int destinacijski,
+                                  float tezina = 0) = 0;
+  virtual float dajTezinuGrane(int pocetni, int destinacijski) = 0;
+  virtual bool postojiGrana(int pocetni, int destinacijski) = 0;
+  virtual void postaviOznakuCvora(int index, TipOznake oznaka) = 0;
+  virtual TipOznake dajOznakuCvora(int index) = 0;
+  virtual void postaviOznakuGrane(int pocetni, int destinacijski,
+                                  TipOznake oznaka) = 0;
+  virtual TipOznake dajOznakuGrane(int pocetni, int destinacijski) = 0;
+  virtual void postaviOznakuGraneB(int pocetni, int destinacijski) = 0;
+  virtual bool dajOznakuGraneB(int pocetni, int destinacijski) = 0;
+  virtual Cvor<TipOznake> dajCvor(int broj) = 0;
+  virtual Grana<TipOznake> dajGranu(int pocetni, int destinacijski) = 0;
+  virtual Grana<TipOznake> *dajGranui(int pocetni, int destinacijski) = 0;
+  virtual GranaIterator<TipOznake> dajGranePocetak() = 0;
+  virtual GranaIterator<TipOznake> dajGraneKraj() = 0;
+  virtual int dajBrojGrana(int broj) = 0;
+  virtual int dajZadnjiRed() = 0;
+  virtual int dajZadnjuKolonu() = 0;
+  virtual void postaviOznakuCvoraB(int broj, int i = 1) = 0;
+  virtual bool dajOznakuCvoraB(int broj) = 0;
+};
+
+template <typename TipOznake>
+class ListaGraf : public UsmjereniGraf<TipOznake> {
+  int br_cvorova = 0, br_grana = 0;
+  vector<vector<Grana<TipOznake> *>> matrica;
+  vector<Cvor<TipOznake> *> cvorovi;
+  int prvir = 0, prvak = 0, zadnjir = 0, zadnjak = 0;
+  GranaIterator<TipOznake> *g1 = nullptr, *g2 = nullptr;
+
+public:
+  ListaGraf(int br) {
+    br_cvorova = br;
+    matrica.resize(br);
+    for (int i = 0; i < br; i++) {
+      cvorovi.push_back(new Cvor<TipOznake>(this, i));
+    }
+  }
+  ~ListaGraf() {
+
+    for (int i = 0; i < br_cvorova; i++) {
+      delete cvorovi[i];
+      for (int j = 0; j < matrica[i].size(); j++) {
+        delete matrica[i][j];
+      }
+    }
+    delete g1;
+    delete g2;
+  }
+
+  int dajBrojCvorova() { return br_cvorova; }
+  void postaviBrojCvorova(int br) {
+    if (br < br_cvorova)
+      throw domain_error("error");
+
+    matrica.resize(br);
+    for (int i = br_cvorova; i < br; i++) {
+      cvorovi.push_back(new Cvor<TipOznake>(this, i));
+    }
+    br_cvorova = br;
+  }
+  void dodajGranu(int p, int d, float tezina = 0) {
+    Grana<TipOznake> *g =
+        new Grana<TipOznake>(cvorovi[p], cvorovi[d], tezina, this);
+    matrica[p].push_back(g);
+    if ((prvir == p && prvak > d) || prvir > p) {
+      prvir = p;
+      prvak = d;
+    }
+    if ((zadnjir == p && zadnjak < d) || zadnjir < p) {
+      zadnjir = p;
+      zadnjak = d;
+    }
+  }
+  void obrisiGranu(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        delete matrica[p][i];
+        matrica[p][i] = nullptr;
+        break;
+      }
+    }
+  }
+  void postaviTezinuGrane(int p, int d, float tezina = 0) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        matrica[p][i]->postaviTezinu(tezina, 1);
+        break;
+      }
+    }
+  }
+  float dajTezinuGrane(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        return matrica[p][i]->dajTezinu();
+      }
+    }
+  }
+  bool postojiGrana(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i] != nullptr)
+        if (matrica[p][i]->dajrbDolaznog() == d) {
+          return 1;
+        }
+    }
+    return 0;
+  }
+  void postaviOznakuCvora(int ind, TipOznake oznaka) {
+    cvorovi[ind]->postaviOznakuCvoraB(oznaka, 1);
+  }
+  void postaviOznakuCvoraB(int ind, int i = 1) {
+    cvorovi[ind]->postaviOznaku(i, 1);
+  }
+  bool dajOznakuCvoraB(int ind) { cvorovi[ind]->dajOznakuCvoraB(); }
+
+  TipOznake dajOznakuCvora(int ind) { return cvorovi[ind]->dajOznaku(); }
+
+  void postaviOznakuGrane(int p, int d, TipOznake oznaka) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        matrica[p][i]->postaviOznaku(oznaka, 1);
+        break;
+      }
+    }
+  }
+  TipOznake dajOznakuGrane(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        return matrica[p][i]->dajOznaku();
+      }
+    }
+  }
+  void postaviOznakuGraneB(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        matrica[p][i]->postaviOznakuB(1, 1);
+        break;
+      }
+    }
+  }
+  bool dajOznakuGraneB(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        return matrica[p][i]->dajOznakuB();
+      }
+    }
+  }
+
+  Cvor<TipOznake> dajCvor(int i) { return *cvorovi[i]; }
+
+  Grana<TipOznake> dajGranu(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        return *matrica[p][i];
+      }
+    }
+  }
+
+
+  Grana<TipOznake> *dajGranui(int p, int d) {
+    for (int i = 0; i < matrica[p].size(); i++) {
+      if (matrica[p][i]->dajrbDolaznog() == d) {
+        return matrica[p][i];
+      }
+    }
+  }
+
+  GranaIterator<TipOznake> dajGranePocetak() {
+    if (g1 != nullptr)
+      delete g1;
+    g1 = new GranaIterator<TipOznake>(this, prvir, prvak);
+    //  matrica[prvir][prvak]->postaviOznakuB(1);
+    dodajGranu(1, 3); /*    int k=0;
+         for(int i=br_cvorova-1; i>=0; i--)
+         {
+             if(matrica[i].size()!=0)
+             {
+                 k=i; break;
+             }
+         }
+       int zadnji = matrica[k].size() - 1;*/
+
+    return *g1;
+  }
+
+  GranaIterator<TipOznake> dajGraneKraj() {
+    if (g2 != nullptr)
+      delete g2;
+
+    g2 = new GranaIterator<TipOznake>(this, zadnjir, zadnjak);
+    return *g2;
+  }
+  int dajZadnjiRed() { return zadnjir; }
+  int dajZadnjuKolonu() { return zadnjak; }
+  int dajBrojGrana(int i) { return matrica[i].size(); }
+};
+
+template <typename TipOznake>
+void postaviOznake(UsmjereniGraf<TipOznake> *pok) {
+  int i = 0;
+  while (i < pok->dajBrojCvorova()) {
+    pok->postaviOznakuCvoraB(i, 0);
+    i++;
+  }
+}
+
+template <typename TipOznake>
+void dfs(UsmjereniGraf<TipOznake> *pok, std::vector<Cvor<TipOznake>> &vektor,
+         Cvor<TipOznake> cvor) {
+  if (cvor.dajOznakuCvoraB() == 1)
+    return;
+  vektor.push_back(pok->dajCvor(cvor.dajRedniBroj()));
+  pok->postaviOznakuCvoraB(cvor.dajRedniBroj(), 1);
+
+  int i = 0;
+  while (vektor.size() < pok->dajBrojCvorova() && i < pok->dajBrojCvorova()) {
+    if (pok->postojiGrana(cvor.dajRedniBroj(), i) &&
+        !(pok->dajOznakuCvoraB(i))) {
+      dfs(pok, vektor, pok->dajCvor(i));
+    }
+    i++;
+  }
+  if (vektor.size() == pok->dajBrojCvorova()) {
+    postaviOznake(pok);
+  }
+}
+template <typename TipOznake>
+void bfs(UsmjereniGraf<TipOznake> *pok, std::vector<Cvor<TipOznake>> &vektor,
+         Cvor<TipOznake> cvor) {
+  vektor.push_back(pok->dajCvor(cvor.dajRedniBroj()));
+  pok->dajCvor(cvor.dajRedniBroj()).postaviOznakuCvoraB(1);
+  for (int i = cvor.dajRedniBroj();
+       vektor.size() < pok->dajBrojCvorova() && i < pok->dajBrojCvorova();
+       i++) {
+    for (int j = 0;
+         vektor.size() < pok->dajBrojCvorova() && j < pok->dajBrojCvorova();
+         j++) {
+      if (pok->postojiGrana(i, j) && !(pok->dajOznakuCvoraB(j))) {
+        pok->postaviOznakuCvoraB(j, 1);
+        vektor.push_back(pok->dajCvor(j));
+      }
+    }
+  }
+  if (vektor.size() == pok->dajBrojCvorova()) {
+    postaviOznake(pok);
+  }
+}
+
+template <typename TipOznake> class Grana {
+  float tezina;
+  TipOznake oznaka = TipOznake();
+  Cvor<TipOznake> *polazni;
+  Cvor<TipOznake> *destinacijski;
+  UsmjereniGraf<TipOznake> *pok;
+  bool posjecen = false;
+
+public:
+  Grana(Cvor<TipOznake> *pol, Cvor<TipOznake> *dest, float tez,
+        UsmjereniGraf<TipOznake> *p) {
+    polazni = pol;
+    destinacijski = dest;
+    pok = p;
+    tezina = tez;
+  }
+  float dajTezinu() { return tezina; }
+  void postaviTezinu(float vrijednost, int ok = 0) {
+    if (!ok)
+      pok->postaviTezinuGrane(polazni->dajRedniBroj(),
+                              destinacijski->dajRedniBroj(), vrijednost);
+    this->tezina = vrijednost;
+  }
+  TipOznake dajOznaku() { return oznaka; }
+  void postaviOznaku(TipOznake vrijednost, int ok = 0) {
+    if (!ok)
+      pok->postaviOznakuGrane(polazni->dajRedniBroj(),
+                              destinacijski->dajRedniBroj(), vrijednost);
+    oznaka = vrijednost;
+  }
+  Cvor<TipOznake> dajPolazniCvor() { return *polazni; }
+  Cvor<TipOznake> dajDolazniCvor() { return *destinacijski; }
+  bool dajOznakuB() { return posjecen; }
+  void postaviOznakuB(int vrijednost, int ok = 0) {
+    if (!ok)
+      pok->postaviOznakuGraneB(polazni->dajRedniBroj(),
+                               destinacijski->dajRedniBroj());
+    this->posjecen = vrijednost;
+  }
+  int dajrbPolaznog() { return polazni->dajRedniBroj(); }
+  int dajrbDolaznog() { return destinacijski->dajRedniBroj(); }
+};
+
+template <typename TipOznake> class Cvor {
+  int RedniBroj;
+  TipOznake oznaka;
+  UsmjereniGraf<TipOznake> *pok;
+  bool posjecen = false;
+
+public:
+  Cvor() {}
+  Cvor(UsmjereniGraf<TipOznake> *p, int broj) {
+    RedniBroj = broj;
+    pok = p;
+  }
+  TipOznake dajOznaku() { return oznaka; }
+  void postaviOznakuCvoraB(TipOznake vrijednost, int ok = 0) {
+    if (!ok)
+      pok->postaviOznakuCvora(RedniBroj, vrijednost);
+    oznaka = vrijednost;
+  }
+  int dajRedniBroj() { return RedniBroj; }
+  bool dajOznakuCvoraB() { return posjecen; }
+  void postaviOznaku(int vrijednost, int ok = 0) {
+    if (!ok)
+      pok->postaviOznakuCvoraB(RedniBroj, 1);
+    this->posjecen = vrijednost;
+  }
+};
+
+template <typename TipOznake> class GranaIterator {
+  UsmjereniGraf<TipOznake> *pok;
+  int pol, dest;
+  bool zadnji = 0;
+
+public:
+  GranaIterator(UsmjereniGraf<TipOznake> *p, int pol, int dest) {
+    pok = p;
+    this->pol = pol;
+    this->dest = dest;
+  }
+  Grana<TipOznake> operator*() { return pok->dajGranu(pol, dest); }
+  bool operator==(const GranaIterator &it) const {
+    if (pol == it.pol && dest == it.dest && pok == it.pok)
+      return 1;
+    return 0;
+  }
+  bool operator!=(const GranaIterator &it) const {
+    if (zadnji == 1)
+      return 0;
+    if (pol != it.pol || dest != it.dest || pok != it.pok)
+      return 1;
+  }
+  GranaIterator &operator++() {
+    if (pol == pok->dajBrojCvorova())
+      throw std::domain_error("Nema vise grana!");
+
+    for (int i = 0; i < pok->dajBrojCvorova(); i++)
+      for (int j = 0; j < pok->dajBrojCvorova(); j++) {
+        if (pok->postojiGrana(i, j)) {
+          if (pok->dajGranu(i, j).dajOznakuB() != 1) {
+            pok->dajGranu(i, j).postaviOznakuB(1);
+            pol = i;
+            dest = j;
+            return *this;
+          }
+        }
+      }
+    pol = pok->dajBrojCvorova() - 1;
+    dest = pol;
+    return *this;
+  }
+  GranaIterator &operator++(int) {
+    if (pol + 1 == pok->dajBrojCvorova())
+      throw std::domain_error("Nema vise grana!");
+    pok->dajGranu(0, 0).postaviOznakuB(1);
+    for (int i = 0; i < pok->dajBrojCvorova(); i++)
+      for (int j = 0; j < pok->dajBrojCvorova(); j++) {
+        if (pok->postojiGrana(i, j)) {
+          if (pok->dajGranu(i, j).dajOznakuB() != 1) {
+            pok->dajGranu(i, j).postaviOznakuB(1);
+            if (pok->dajZadnjiRed() == i && pok->dajZadnjuKolonu() == j)
+              zadnji = 1;
+            pol = i;
+            dest = j;
+            return *this;
+          }
+        }
+      }
+    pol = pok->dajBrojCvorova() - 1;
+    dest = 0;
+    zadnji = 0;
+    return *this;
+  }
+};
+
+int main() {
+  HashMapaLan<std::string, std::string> m;
+  // Nije definisana hash funkcija!
+  std::string s1("Sarajevo"), s2("Zagreb");
+  m[s1] = "BiH";
+  m[s2] = "Hrvatska";
+  std::cout << m.brojElemenata() << " " << m[s2];
+  return 0;
+}
